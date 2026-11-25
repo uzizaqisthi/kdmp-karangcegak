@@ -28,6 +28,51 @@
     <p class="text-sm font-semibold text-slate-700">Menghubungkan ke Database KDMP Karangcegak...</p>
   </div>
 
+  <!-- MODAL EDIT BARANG OWNER -->
+  <div id="modal-edit-produk" class="hidden fixed inset-0 bg-slate-900/60 z-40 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b pb-2.5">
+        <h3 class="font-extrabold text-slate-800">Edit Detail Barang</h3>
+        <button onclick="tutupModalEditProduk()" class="text-slate-400 hover:text-slate-700 font-bold text-lg leading-none">&times;</button>
+      </div>
+      <form onsubmit="simpanEditProduk(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="edit-p-id" />
+        <div>
+          <label class="font-bold block mb-1">Nama Barang</label>
+          <input type="text" id="edit-p-nama" required class="w-full border border-slate-300 rounded-lg p-2.5" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="font-bold block mb-1">Kategori</label>
+            <input type="text" id="edit-p-kategori" required class="w-full border border-slate-300 rounded-lg p-2.5" />
+          </div>
+          <div>
+            <label class="font-bold block mb-1">Satuan</label>
+            <input type="text" id="edit-p-satuan" required placeholder="Sak / Kg / Liter" class="w-full border border-slate-300 rounded-lg p-2.5" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="font-bold block mb-1">Harga (Rp)</label>
+            <input type="number" id="edit-p-harga" required min="0" class="w-full border border-slate-300 rounded-lg p-2.5" />
+          </div>
+          <div>
+            <label class="font-bold block mb-1">Jumlah Stok</label>
+            <input type="number" id="edit-p-stok" required min="0" class="w-full border border-slate-300 rounded-lg p-2.5" />
+          </div>
+        </div>
+        <div>
+          <label class="font-bold block mb-1">Ganti Foto Barang (Opsional — biarkan kosong jika tetap)</label>
+          <input type="file" id="edit-p-foto" accept="image/*" class="w-full text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-amber-50 file:text-amber-800 file:font-bold" />
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="tutupModalEditProduk()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl">Batal</button>
+          <button type="submit" id="btn-simpan-edit" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl">Simpan Perubahan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- HEADER UTAMA -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm no-print">
     <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
@@ -282,16 +327,19 @@
           </div>
 
           <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <div class="flex items-center justify-between mb-4 no-print">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4 no-print">
               <h3 class="font-bold text-slate-800">Daftar Barang & Stok Gerai</h3>
-              <button onclick="cetakDaftarHarga()" class="bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-xl">Cetak Daftar Harga Tersedia</button>
+              <div class="flex flex-wrap items-center gap-2">
+                <input type="text" id="search-produk-owner" oninput="renderTabelProdukOwner()" placeholder="Cari barang di tabel..." class="border border-slate-300 rounded-xl px-3 py-1.5 text-xs w-48" />
+                <button onclick="cetakDaftarHarga()" class="bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-xl">Cetak Daftar Harga Tersedia</button>
+              </div>
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr class="border-b bg-slate-50 text-slate-600">
                     <th class="p-2.5">Foto</th>
-                    <th class="p-2.5">Nama Barang</th>
+                    <th class="p-2.5">Nama & Satuan</th>
                     <th class="p-2.5">Harga</th>
                     <th class="p-2.5">Stok</th>
                     <th class="p-2.5 no-print">Aksi Owner</th>
@@ -510,7 +558,6 @@
       document.getElementById('profil-syarat').textContent = p.info_pendaftaran || '';
       document.getElementById('profil-total-anggota').textContent = state.anggota.length + ' Warga';
 
-      // Isi form profil owner
       document.getElementById('edit-nama-gerai').value = p.nama_gerai || '';
       document.getElementById('edit-alamat').value = p.alamat || '';
       document.getElementById('edit-jam').value = p.jam_operasional || '';
@@ -518,7 +565,6 @@
       document.getElementById('edit-deskripsi').value = p.deskripsi || '';
       document.getElementById('edit-pass-owner').value = p.password_owner || 'karangcegak2026';
 
-      // Daftar nama anggota publik
       const listPub = document.getElementById('list-anggota-publik');
       listPub.innerHTML = state.anggota.length
         ? state.anggota.map(a => `<span class="bg-slate-100 text-slate-700 text-xs font-medium px-3 py-1 rounded-full">${a.nama}</span>`).join('')
@@ -613,7 +659,7 @@
               ${item.foto_url ? `<img src="${item.foto_url}" class="w-full h-full object-cover" />` : ''}
             </div>
             <h4 class="font-bold text-xs text-slate-800 line-clamp-2">${item.nama}</h4>
-            <p class="text-red-600 font-extrabold text-xs mt-1">${rupiah(item.harga)}</p>
+            <p class="text-red-600 font-extrabold text-xs mt-1">${rupiah(item.harga)} <span class="text-[10px] font-normal text-slate-400">/ ${item.satuan}</span></p>
           </div>
           <button onclick="tambahKeKeranjang(${item.id})" ${item.stok <= 0 ? 'disabled' : ''} class="mt-2 w-full py-1.5 rounded-lg text-[11px] font-bold ${item.stok > 0 ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-slate-200 text-slate-400'}">
             ${item.stok > 0 ? '+ Keranjang' : 'Stok Habis'}
@@ -742,16 +788,54 @@
       }
     }
 
-    async function gantiFotoProduk(id, inputEl) {
-      const file = inputEl.files[0];
-      if (!file) return;
+    // FITUR EDIT DETAIL BARANG LENGKAP (NAMA, KATEGORI, HARGA, SATUAN, STOK, FOTO)
+    function bukaModalEditProduk(id) {
+      const item = state.produk.find(p => p.id === id);
+      if (!item) return;
+      document.getElementById('edit-p-id').value = item.id;
+      document.getElementById('edit-p-nama').value = item.nama;
+      document.getElementById('edit-p-kategori').value = item.kategori;
+      document.getElementById('edit-p-satuan').value = item.satuan;
+      document.getElementById('edit-p-harga').value = item.harga;
+      document.getElementById('edit-p-stok').value = item.stok;
+      document.getElementById('edit-p-foto').value = '';
+      document.getElementById('modal-edit-produk').classList.remove('hidden');
+    }
+
+    function tutupModalEditProduk() {
+      document.getElementById('modal-edit-produk').classList.add('hidden');
+    }
+
+    async function simpanEditProduk(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-simpan-edit');
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan...';
+
+      const id = Number(document.getElementById('edit-p-id').value);
+      const file = document.getElementById('edit-p-foto').files[0];
+      const payload = {
+        nama: document.getElementById('edit-p-nama').value.trim(),
+        kategori: document.getElementById('edit-p-kategori').value.trim(),
+        satuan: document.getElementById('edit-p-satuan').value.trim(),
+        harga: Number(document.getElementById('edit-p-harga').value),
+        stok: Number(document.getElementById('edit-p-stok').value)
+      };
+
       try {
-        const fotoUrl = await uploadFotoStorage(file);
-        await db.from('produk').update({ foto_url: fotoUrl }).eq('id', id);
-        alert('Foto barang berhasil diperbarui!');
+        if (file) {
+          payload.foto_url = await uploadFotoStorage(file);
+        }
+        const { error } = await db.from('produk').update(payload).eq('id', id);
+        if (error) throw error;
+        tutupModalEditProduk();
+        alert('Data barang berhasil diperbarui!');
         initApp();
       } catch (err) {
-        alert('Gagal unggah foto: ' + err.message);
+        alert('Gagal memperbarui barang: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Simpan Perubahan';
       }
     }
 
@@ -767,26 +851,27 @@
     }
 
     function renderTabelProdukOwner() {
+      const q = (document.getElementById('search-produk-owner').value || '').toLowerCase();
+      const filtered = state.produk.filter(item =>
+        item.nama.toLowerCase().includes(q) || (item.kategori || '').toLowerCase().includes(q)
+      );
       const tbody = document.getElementById('tabel-produk-owner');
-      tbody.innerHTML = state.produk.map(item => `
+      tbody.innerHTML = filtered.length ? filtered.map(item => `
         <tr>
           <td class="p-2.5">
             ${item.foto_url ? `<img src="${item.foto_url}" class="w-12 h-12 rounded-lg object-cover border" />` : '<span class="text-slate-400">No Foto</span>'}
           </td>
-          <td class="p-2.5 font-bold">${item.nama}<br><span class="text-[10px] font-normal text-slate-500">${item.kategori} • /${item.satuan}</span></td>
+          <td class="p-2.5 font-bold">${item.nama}<br><span class="text-[10px] font-normal text-slate-500">${item.kategori} • Satuan: <strong>${item.satuan}</strong></span></td>
           <td class="p-2.5 font-semibold text-red-600">${rupiah(item.harga)}</td>
           <td class="p-2.5">
-            <input type="number" value="${item.stok}" onchange="ubahStokProduk(${item.id}, this.value)" class="border rounded px-2 py-1 w-16" />
+            <input type="number" value="${item.stok}" onchange="ubahStokProduk(${item.id}, this.value)" class="border rounded px-2 py-1 w-16" title="Ubah cepat stok" />
           </td>
-          <td class="p-2.5 space-x-1 no-print">
-            <label class="cursor-pointer bg-amber-100 text-amber-800 px-2 py-1 rounded font-bold inline-block">
-              Ganti Foto
-              <input type="file" accept="image/*" onchange="gantiFotoProduk(${item.id}, this)" class="hidden" />
-            </label>
-            <button onclick="hapusProduk(${item.id})" class="bg-rose-100 text-rose-700 px-2 py-1 rounded font-bold">Hapus</button>
+          <td class="p-2.5 space-x-1 no-print whitespace-nowrap">
+            <button onclick="bukaModalEditProduk(${item.id})" class="bg-blue-100 hover:bg-blue-200 text-blue-800 px-2.5 py-1.5 rounded-lg font-bold">Edit</button>
+            <button onclick="hapusProduk(${item.id})" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-2.5 py-1.5 rounded-lg font-bold">Hapus</button>
           </td>
         </tr>
-      `).join('');
+      `).join('') : '<tr><td colspan="5" class="p-6 text-center text-slate-400">Tidak ada barang yang cocok.</td></tr>';
     }
 
     function cetakDaftarHarga() {
