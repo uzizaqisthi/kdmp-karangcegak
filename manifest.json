@@ -1,0 +1,10 @@
+{
+  "name": "Koperasi Desa Merah Putih Karangcegak",
+  "short_name": "KDMP Karangcegak",
+  "description": "Platform Keanggotaan, Katalog & Layanan Digital Koperasi Desa Merah Putih Karangcegak",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#b91c1c",
+  "orientation": "portrait"
+}
