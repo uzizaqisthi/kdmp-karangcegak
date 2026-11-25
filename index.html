@@ -106,9 +106,10 @@
 
       <!-- PILIHAN MODE AKSES -->
       <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
-        <button onclick="switchMode('tamu')" id="btn-mode-tamu" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white shadow-sm transition">1. Tamu</button>
-        <button onclick="switchMode('member')" id="btn-mode-member" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition">2. Anggota</button>
-        <button onclick="switchMode('owner')" id="btn-mode-owner" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition">3. Owner</button>
+        <button onclick="switchMode('tamu')" id="btn-mode-tamu" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white shadow-sm transition">Tamu / Publik</button>
+        <button onclick="switchMode('member')" id="btn-mode-member" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition">Login Anggota</button>
+        <!-- Tombol Owner tersembunyi secara default untuk link publik -->
+        <button onclick="switchMode('owner')" id="btn-mode-owner" class="hidden px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition">Admin / Owner</button>
       </div>
     </div>
   </header>
@@ -286,7 +287,7 @@
       <!-- Login Owner -->
       <div id="owner-login-box" class="max-w-md mx-auto bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <h2 class="text-lg font-bold text-slate-800 mb-1">Panel Khusus Pengurus / Owner</h2>
-        <p class="text-xs text-slate-500 mb-4">Masukkan kata sandi pengurus (Default awal: <code class="bg-slate-100 px-1.5 py-0.5 rounded font-bold">karangcegak2026</code>).</p>
+        <p class="text-xs text-slate-500 mb-4">Masukkan kata sandi pengurus untuk mengelola gerai.</p>
         <form onsubmit="handleOwnerLogin(event)" class="space-y-3">
           <input type="password" id="login-pass-owner" required placeholder="Password Owner" class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm" />
           <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-sm">Buka Dashboard Owner</button>
@@ -514,6 +515,10 @@
     const SUPABASE_KEY = 'sb_publishable_kgopLEBI7PIn73ECogDtaQ__up6_JGJ';
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    // CEK PARAMETER URL KHUSUS ADMIN (?mode=owner)
+    const urlParams = new URLSearchParams(window.location.search);
+    const isOwnerRoute = urlParams.get('mode') === 'owner';
+
     let state = {
       profil: {},
       produk: [],
@@ -527,6 +532,12 @@
     const rupiah = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
 
     async function initApp() {
+      // Tampilkan tombol Owner HANYA jika link dibuka dengan ?mode=owner
+      if (isOwnerRoute) {
+        document.getElementById('btn-mode-owner').classList.remove('hidden');
+        switchMode('owner');
+      }
+
       try {
         const [resProfil, resProduk, resAnggota, resPesanan] = await Promise.all([
           db.from('profil_koperasi').select('*').eq('id', 1).single(),
@@ -581,9 +592,12 @@
       ['tamu', 'member', 'owner'].forEach(m => {
         document.getElementById('view-' + m).classList.toggle('hidden', m !== mode);
         const btn = document.getElementById('btn-mode-' + m);
-        btn.className = m === mode
-          ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white shadow-sm transition'
-          : 'px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition';
+        if (btn) {
+          const isHidden = btn.classList.contains('hidden');
+          btn.className = (isHidden ? 'hidden ' : '') + (m === mode
+            ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white shadow-sm transition'
+            : 'px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition');
+        }
       });
     }
 
@@ -788,7 +802,6 @@
       }
     }
 
-    // FITUR EDIT DETAIL BARANG LENGKAP (NAMA, KATEGORI, HARGA, SATUAN, STOK, FOTO)
     function bukaModalEditProduk(id) {
       const item = state.produk.find(p => p.id === id);
       if (!item) return;
