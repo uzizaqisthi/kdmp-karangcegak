@@ -4,327 +4,316 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KDMP Karangcegak — Koperasi Desa Merah Putih</title>
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#b91c1c" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .id-card-size { width: 325px; height: 204px; }
     @media print {
-      header, main, .no-print, #loading-overlay, #modal-edit-produk, #modal-daftar-mandiri {
-        display: none !important;
-      }
-      body {
-        background: #ffffff !important;
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-      #print-area {
-        display: block !important;
-        visibility: visible !important;
-        position: static !important;
-        width: 100% !important;
-        background: #ffffff !important;
-      }
-      #print-area * {
-        visibility: visible !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
+      body > *:not(#print-area) { display: none !important; }
+      #print-area { display: block !important; position: static !important; width: 100% !important; background: white !important; }
+      @page { margin: 10mm; }
     }
-    .id-card-size { width: 85.6mm; height: 54mm; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
   <!-- LOADING OVERLAY -->
   <div id="loading-overlay" class="fixed inset-0 bg-white/90 z-50 flex flex-col items-center justify-center">
-    <div class="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin mb-3"></div>
-    <p class="text-sm font-semibold text-slate-700">Memuat Sistem KDMP Karangcegak...</p>
+    <div class="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+    <p class="text-sm font-semibold text-slate-600">Menghubungkan ke Database KDMP Karangcegak...</p>
   </div>
 
-  <!-- MODAL EDIT BARANG OWNER -->
-  <div id="modal-edit-produk" class="hidden fixed inset-0 bg-slate-900/60 z-40 flex items-center justify-center p-4 overflow-y-auto">
-    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4 my-auto">
-      <div class="flex items-center justify-between border-b pb-2.5">
-        <h3 class="font-extrabold text-slate-800">Edit Detail & Sumber Barang</h3>
-        <button onclick="tutupModalEditProduk()" class="text-slate-400 hover:text-slate-700 font-bold text-lg leading-none">&times;</button>
+  <!-- MODAL PENDAFTARAN MANDIRI CALON ANGGOTA -->
+  <div id="modal-daftar-mandiri" class="hidden fixed inset-0 bg-slate-900/60 z-40 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b pb-3">
+        <div>
+          <h3 class="font-extrabold text-base text-slate-900">Formulir Pendaftaran Anggota Baru</h3>
+          <p class="text-[11px] text-slate-500">Khusus Warga Desa Karangcegak, Kec. Sumbang</p>
+        </div>
+        <button onclick="document.getElementById('modal-daftar-mandiri').classList.add('hidden')" class="text-slate-400 hover:text-slate-700 font-bold text-lg">&times;</button>
+      </div>
+      <form onsubmit="kirimPendaftaranMandiri(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="font-bold block mb-1">Nama Lengkap (Sesuai KTP)*</label>
+          <input type="text" id="calon-nama" required placeholder="Contoh: Budi Santoso" class="w-full border border-slate-300 rounded-lg p-2.5" />
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="font-bold block mb-1">Nomor NIK (16 Digit)*</label>
+            <input type="text" id="calon-nik" required maxlength="16" placeholder="3302xxxxxxxxxxxx" class="w-full border border-slate-300 rounded-lg p-2.5 font-mono" />
+          </div>
+          <div>
+            <label class="font-bold block mb-1">Nomor WhatsApp*</label>
+            <input type="text" id="calon-hp" required placeholder="08xxxxxxxxxx" class="w-full border border-slate-300 rounded-lg p-2.5" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="font-bold block mb-1">Tempat Lahir*</label>
+            <input type="text" id="calon-tempat" required placeholder="Banyumas" class="w-full border border-slate-300 rounded-lg p-2.5" />
+          </div>
+          <div>
+            <label class="font-bold block mb-1">Tanggal Lahir*</label>
+            <input type="date" id="calon-tgl" required class="w-full border border-slate-300 rounded-lg p-2.5" />
+          </div>
+        </div>
+        <div>
+          <label class="font-bold block mb-1">Alamat RT / RW Dusun*</label>
+          <input type="text" id="calon-alamat" required placeholder="RT.001/RW.002 Desa Karangcegak" class="w-full border border-slate-300 rounded-lg p-2.5" />
+        </div>
+        <div>
+          <label class="font-bold block mb-1">Buat Password Login Anggota*</label>
+          <input type="text" id="calon-pass" required minlength="4" placeholder="Minimal 4 karakter" class="w-full border border-slate-300 rounded-lg p-2.5" />
+        </div>
+        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl shadow">Kirim Pengajuan Keanggotaan</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL EDIT BARANG (OWNER) -->
+  <div id="modal-edit-produk" class="hidden fixed inset-0 bg-slate-900/60 z-40 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-extrabold text-base text-slate-900">Edit Detail Barang, Sumber & Status Subsidi</h3>
+        <button type="button" onclick="tutupModalEditProduk()" class="text-slate-400 hover:text-slate-700 font-bold text-xl leading-none">&times;</button>
       </div>
       <form onsubmit="simpanEditProduk(event)" class="space-y-3 text-xs">
         <input type="hidden" id="edit-p-id" />
         <div>
-          <label class="font-bold block mb-1">Nama Barang</label>
+          <label class="font-bold block mb-1">Nama Barang*</label>
           <input type="text" id="edit-p-nama" required class="w-full border border-slate-300 rounded-lg p-2.5" />
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="font-bold block mb-1">Sumber Barang</label>
-            <select id="edit-p-sumber" onchange="toggleEditSumberUmkm()" class="w-full border border-slate-300 rounded-lg p-2.5 bg-white font-bold">
+            <label class="font-bold block mb-1 text-blue-800">Sumber Pasokan*</label>
+            <select id="edit-p-sumber" onchange="toggleEditSumberUmkm()" class="w-full border border-blue-300 bg-blue-50/40 rounded-lg p-2.5 font-bold">
               <option value="Pasokan Agrinas">Pasokan Agrinas</option>
               <option value="Modal Koperasi">Modal Koperasi</option>
               <option value="UMKM Warga">UMKM Warga</option>
             </select>
           </div>
           <div>
-            <label class="font-bold block mb-1">Kategori</label>
-            <input type="text" id="edit-p-kategori" required class="w-full border border-slate-300 rounded-lg p-2.5" />
+            <label class="font-bold block mb-1 text-purple-800">Kelompok Subsidi*</label>
+            <select id="edit-p-subsidi" class="w-full border border-purple-300 bg-purple-50/40 rounded-lg p-2.5 font-bold text-purple-900">
+              <option value="false">Non-Subsidi (Umum)</option>
+              <option value="true">Barang Subsidi (Wajib NIK)</option>
+            </select>
           </div>
-        </div>
-        <div id="box-edit-pemilik" class="hidden bg-amber-50 p-2.5 rounded-xl border border-amber-200">
-          <label class="font-bold block mb-1 text-amber-900">Nama Pelaku UMKM Warga</label>
-          <input type="text" id="edit-p-pemilik" placeholder="Nama Warga / Pelaku UMKM" class="w-full border border-amber-300 rounded-lg p-2 bg-white" />
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="font-bold block mb-1 text-slate-600">Harga Modal / Tebus (HPP)</label>
+            <label class="font-bold block mb-1">Kategori*</label>
+            <input type="text" id="edit-p-kategori" required class="w-full border border-slate-300 rounded-lg p-2.5" />
+          </div>
+          <div>
+            <label class="font-bold block mb-1">Satuan*</label>
+            <input type="text" id="edit-p-satuan" required class="w-full border border-slate-300 rounded-lg p-2.5" />
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="font-bold block mb-1">Harga Modal (HPP)*</label>
             <input type="number" id="edit-p-modal" required min="0" class="w-full border border-slate-300 rounded-lg p-2.5" />
           </div>
           <div>
-            <label class="font-bold block mb-1 text-red-700">Harga Jual Gerai (Rp)</label>
-            <input type="number" id="edit-p-harga" required min="0" class="w-full border border-red-300 rounded-lg p-2.5 font-bold" />
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="font-bold block mb-1">Satuan</label>
-            <input type="text" id="edit-p-satuan" required class="w-full border border-slate-300 rounded-lg p-2.5" />
+            <label class="font-bold block mb-1">Harga Jual (Rp)*</label>
+            <input type="number" id="edit-p-harga" required min="0" class="w-full border border-slate-300 rounded-lg p-2.5" />
           </div>
           <div>
-            <label class="font-bold block mb-1">Jumlah Stok</label>
+            <label class="font-bold block mb-1">Stok Saat Ini*</label>
             <input type="number" id="edit-p-stok" required min="0" class="w-full border border-slate-300 rounded-lg p-2.5" />
           </div>
         </div>
+        <div id="box-edit-pemilik" class="hidden bg-amber-50 p-3 rounded-xl border border-amber-200">
+          <label class="font-bold block mb-1 text-amber-900">Nama Warga Pemilik UMKM:</label>
+          <input type="text" id="edit-p-pemilik" class="w-full border border-amber-300 rounded-lg p-2 bg-white" />
+        </div>
         <div>
-          <label class="font-bold block mb-1">Ganti Foto Barang (Opsional)</label>
-          <input type="file" id="edit-p-foto" accept="image/*" class="w-full text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-amber-50 file:text-amber-800 file:font-bold" />
+          <label class="font-bold block mb-1">Ganti Foto Barang (Kosongkan jika tidak diubah):</label>
+          <input type="file" id="edit-p-foto" accept="image/*" class="w-full text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 file:font-bold" />
         </div>
         <div class="flex gap-2 pt-2">
-          <button type="button" onclick="tutupModalEditProduk()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl">Batal</button>
-          <button type="submit" id="btn-simpan-edit" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl">Simpan Perubahan</button>
+          <button type="button" onclick="tutupModalEditProduk()" class="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl">Batal</button>
+          <button type="submit" id="btn-simpan-edit" class="w-2/3 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl shadow">Simpan Perubahan</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- MODAL PENDAFTARAN MANDIRI WARGA (TAMU) -->
-  <div id="modal-daftar-mandiri" class="hidden fixed inset-0 bg-slate-900/60 z-40 flex items-center justify-center p-4 overflow-y-auto">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4 my-auto">
-      <div class="flex items-center justify-between border-b pb-2.5">
-        <div>
-          <h3 class="font-extrabold text-slate-800">Formulir Pendaftaran Calon Anggota</h3>
-          <p class="text-[11px] text-slate-500">Isi data sesuai KTP Desa Karangcegak untuk pengajuan keanggotaan.</p>
-        </div>
-        <button onclick="document.getElementById('modal-daftar-mandiri').classList.add('hidden')" class="text-slate-400 hover:text-slate-700 font-bold text-lg">&times;</button>
-      </div>
-      <form onsubmit="kirimPendaftaranMandiri(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-        <div class="sm:col-span-2">
-          <label class="font-bold block mb-1">Nama Lengkap Sesuai KTP*</label>
-          <input type="text" id="calon-nama" required placeholder="Nama lengkap" class="w-full border border-slate-300 rounded-lg p-2.5" />
-        </div>
-        <div>
-          <label class="font-bold block mb-1">NIK (16 Digit)*</label>
-          <input type="text" id="calon-nik" required maxlength="16" minlength="16" placeholder="3302xxxxxxxxxxxx" class="w-full border border-slate-300 rounded-lg p-2.5 font-mono" />
-        </div>
-        <div>
-          <label class="font-bold block mb-1">Nomor WhatsApp*</label>
-          <input type="text" id="calon-hp" required placeholder="08xxxxxxxxxx" class="w-full border border-slate-300 rounded-lg p-2.5" />
-        </div>
-        <div>
-          <label class="font-bold block mb-1">Tempat Lahir*</label>
-          <input type="text" id="calon-tempat" required placeholder="Banyumas" class="w-full border border-slate-300 rounded-lg p-2.5" />
-        </div>
-        <div>
-          <label class="font-bold block mb-1">Tanggal Lahir*</label>
-          <input type="date" id="calon-tgl" required class="w-full border border-slate-300 rounded-lg p-2.5" />
-        </div>
-        <div class="sm:col-span-2">
-          <label class="font-bold block mb-1">Alamat Lengkap (RT / RW / Dusun)*</label>
-          <input type="text" id="calon-alamat" required placeholder="RT.001 / RW.001 Desa Karangcegak" class="w-full border border-slate-300 rounded-lg p-2.5" />
-        </div>
-        <div class="sm:col-span-2">
-          <label class="font-bold block mb-1">Buat Password Login Anda*</label>
-          <input type="text" id="calon-pass" required minlength="4" placeholder="Minimal 4 karakter (ingat baik-baik)" class="w-full border border-slate-300 rounded-lg p-2.5" />
-        </div>
-        <div class="sm:col-span-2 flex gap-2 pt-2">
-          <button type="button" onclick="document.getElementById('modal-daftar-mandiri').classList.add('hidden')" class="flex-1 bg-slate-100 font-bold py-2.5 rounded-xl">Batal</button>
-          <button type="submit" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl">Kirim Pengajuan Anggota</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- HEADER UTAMA -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm no-print">
+  <!-- HEADER & NAVBAR -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 no-print">
     <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <svg viewBox="0 0 260 220" class="w-12 h-11 shrink-0" xmlns="http://www.w3.org/2000/svg">
-          <path d="M98 18 L118 14 L118 26 L98 30 Z" fill="#dc2626"/>
-          <path d="M98 30 L118 26 L118 38 L98 42 Z" fill="#ffffff" stroke="#334155" stroke-width="1.5"/>
-          <path d="M42 82 L118 38 L118 118 L48 118 L48 86" fill="none" stroke="#dc2626" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
-          <line x1="48" y1="118" x2="215" y2="118" stroke="#dc2626" stroke-width="11" stroke-linecap="round"/>
-          <rect x="74" y="76" width="13" height="13" fill="#334155"/>
-          <rect x="91" y="76" width="13" height="13" fill="#334155"/>
-          <rect x="74" y="93" width="13" height="13" fill="#334155"/>
-          <rect x="91" y="93" width="13" height="13" fill="#334155"/>
-          <text x="130" y="58" font-family="Arial Black, sans-serif" font-weight="900" font-size="23" fill="#dc2626">KOP</text>
-          <text x="130" y="81" font-family="Arial Black, sans-serif" font-weight="900" font-size="23" fill="#dc2626">DES</text>
-          <text x="130" y="103" font-family="Arial Black, sans-serif" font-weight="900" font-size="23" fill="#dc2626">KEL</text>
-          <text x="130" y="113" font-family="Arial, sans-serif" font-weight="800" font-size="9.5" fill="#1e293b">MERAH PUTIH</text>
-          <text x="130" y="143" text-anchor="middle" font-family="Arial Black, sans-serif" font-weight="900" font-size="17" fill="#1e293b">KOPERASI</text>
-          <text x="130" y="172" text-anchor="middle" font-family="Arial Black, sans-serif" font-weight="900" font-size="25">
-            <tspan fill="#dc2626">MERAH </tspan>
-            <tspan fill="#ffffff" stroke="#334155" stroke-width="1.2">PUTIH</tspan>
-          </text>
-          <text x="130" y="198" text-anchor="middle" font-family="Arial Black, sans-serif" font-weight="900" font-size="18.5" fill="#dc2626">KARANGCEGAK</text>
+        <svg viewBox="0 0 260 220" class="w-11 h-10 shrink-0" xmlns="http://www.w3.org/2000/svg">
+          <path d="M42 82 L118 38 L118 118 L48 118 L48 86" fill="none" stroke="#dc2626" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+          <path d="M72 118 L72 92 L95 92 L95 118" fill="none" stroke="#dc2626" stroke-width="7"/>
+          <line x1="48" y1="118" x2="215" y2="118" stroke="#dc2626" stroke-width="10" stroke-linecap="round"/>
+          <text x="130" y="95" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="34" fill="#dc2626">KDMP</text>
+          <text x="48" y="145" font-family="Arial, sans-serif" font-weight="800" font-size="14" fill="#991b1b" letter-spacing="0.5">KOPERASI DESA MERAH PUTIH</text>
+          <text x="48" y="162" font-family="Arial, sans-serif" font-weight="700" font-size="12" fill="#475569">KARANGCEGAK • KEC. SUMBANG</text>
         </svg>
         <div>
           <h1 class="font-extrabold text-base sm:text-lg text-red-700 leading-tight" id="header-nama">KDMP Karangcegak</h1>
-          <p class="text-xs text-slate-500">Koperasi Desa Merah Putih • Kec. Sumbang</p>
+          <p class="text-xs text-slate-500">Gerai Sembako & Usaha Warga Desa Karangcegak</p>
         </div>
       </div>
 
-      <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
-        <button onclick="switchMode('tamu')" id="btn-mode-tamu" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white shadow-sm transition">Tamu / Publik</button>
+      <nav class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+        <button onclick="switchMode('tamu')" id="btn-mode-tamu" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white shadow-sm transition">Beranda & Katalog</button>
         <button onclick="switchMode('member')" id="btn-mode-member" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition">Login Anggota</button>
-        <button onclick="switchMode('owner')" id="btn-mode-owner" class="hidden px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition">Admin / Owner</button>
-      </div>
+        <button onclick="switchMode('owner')" id="btn-mode-owner" class="hidden px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition">Owner / Pengurus</button>
+      </nav>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-4 py-6">
+  <main class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full">
 
     <!-- ==================== MODE 1: TAMU / PUBLIK ==================== -->
-    <section id="view-tamu" class="space-y-6">
-      <div class="bg-gradient-to-r from-red-700 via-red-600 to-rose-600 text-white rounded-2xl p-6 shadow-md">
-        <div class="flex flex-col md:flex-row items-center gap-6">
-          <div class="bg-white p-3 rounded-2xl shadow-inner shrink-0">
-            <svg viewBox="0 0 260 220" class="w-28 h-24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M98 18 L118 14 L118 26 L98 30 Z" fill="#dc2626"/>
-              <path d="M98 30 L118 26 L118 38 L98 42 Z" fill="#ffffff" stroke="#334155" stroke-width="1.5"/>
-              <path d="M42 82 L118 38 L118 118 L48 118 L48 86" fill="none" stroke="#dc2626" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
-              <line x1="48" y1="118" x2="215" y2="118" stroke="#dc2626" stroke-width="11" stroke-linecap="round"/>
-              <rect x="74" y="76" width="13" height="13" fill="#334155"/>
-              <rect x="91" y="76" width="13" height="13" fill="#334155"/>
-              <rect x="74" y="93" width="13" height="13" fill="#334155"/>
-              <rect x="91" y="93" width="13" height="13" fill="#334155"/>
-              <text x="130" y="58" font-family="Arial Black, sans-serif" font-weight="900" font-size="23" fill="#dc2626">KOP</text>
-              <text x="130" y="81" font-family="Arial Black, sans-serif" font-weight="900" font-size="23" fill="#dc2626">DES</text>
-              <text x="130" y="103" font-family="Arial Black, sans-serif" font-weight="900" font-size="23" fill="#dc2626">KEL</text>
-              <text x="130" y="113" font-family="Arial, sans-serif" font-weight="800" font-size="9.5" fill="#1e293b">MERAH PUTIH</text>
-              <text x="130" y="143" text-anchor="middle" font-family="Arial Black, sans-serif" font-weight="900" font-size="17" fill="#1e293b">KOPERASI</text>
-              <text x="130" y="172" text-anchor="middle" font-family="Arial Black, sans-serif" font-weight="900" font-size="25">
-                <tspan fill="#dc2626">MERAH </tspan>
-                <tspan fill="#ffffff" stroke="#334155" stroke-width="1.2">PUTIH</tspan>
-              </text>
-              <text x="130" y="198" text-anchor="middle" font-family="Arial Black, sans-serif" font-weight="900" font-size="18.5" fill="#dc2626">KARANGCEGAK</text>
-            </svg>
+    <section id="view-tamu" class="space-y-8">
+      <div class="bg-gradient-to-br from-red-700 via-red-600 to-amber-600 rounded-3xl p-6 sm:p-8 text-white shadow-lg">
+        <div class="max-w-3xl space-y-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="inline-block bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">Resmi • Desa Karangcegak, Kec. Sumbang</span>
+            <button onclick="document.getElementById('modal-daftar-mandiri').classList.remove('hidden')" class="bg-amber-300 hover:bg-amber-200 text-red-950 text-xs font-extrabold px-3.5 py-1 rounded-full shadow transition">
+              + Daftar Jadi Anggota Online
+            </button>
           </div>
-          <div class="space-y-2 text-center md:text-left flex-1">
-            <span class="inline-block bg-white/20 text-xs font-semibold px-3 py-1 rounded-full">Terbuka untuk Umum & Anggota Desa Karangcegak</span>
-            <h2 class="text-2xl font-extrabold" id="profil-judul">Koperasi Desa Merah Putih Karangcegak</h2>
-            <p class="text-sm text-red-50" id="profil-deskripsi">Memuat informasi koperasi...</p>
-            <div class="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-red-100">
-              <div><strong>Alamat:</strong> <span id="profil-alamat">-</span></div>
-              <div><strong>Jam Buka:</strong> <span id="profil-jam">-</span></div>
-              <div><strong>Syarat Anggota:</strong> <span id="profil-syarat">-</span></div>
-              <div><strong>Total Anggota Terdaftar:</strong> <span id="profil-total-anggota" class="font-bold text-white">0 Warga</span></div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold leading-tight" id="profil-judul">Koperasi Desa Merah Putih Karangcegak</h2>
+          <p class="text-sm text-red-50 leading-relaxed" id="profil-deskripsi">Memuat profil koperasi...</p>
+          <div class="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div class="bg-black/15 rounded-xl p-3">
+              <p class="text-red-200 font-semibold">Lokasi Gerai</p>
+              <p class="font-bold mt-0.5" id="profil-alamat">-</p>
             </div>
-            <div class="pt-3 flex flex-wrap gap-2 justify-center md:justify-start">
-              <button onclick="document.getElementById('modal-daftar-mandiri').classList.remove('hidden')" class="bg-amber-400 hover:bg-amber-300 text-slate-900 font-extrabold text-xs px-4 py-2.5 rounded-xl shadow transition">
-                + Daftar Jadi Anggota (Dapat Poin & Layanan Antar)
-              </button>
+            <div class="bg-black/15 rounded-xl p-3">
+              <p class="text-red-200 font-semibold">Jam Buka</p>
+              <p class="font-bold mt-0.5" id="profil-jam">-</p>
+            </div>
+            <div class="bg-black/15 rounded-xl p-3">
+              <p class="text-red-200 font-semibold">Anggota Aktif</p>
+              <p class="font-bold mt-0.5" id="profil-total-anggota">0 Warga</p>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Katalog Barang & Etalase UMKM -->
+      <!-- Katalog Barang & Filter Subsidi / Non-Subsidi / UMKM -->
       <div>
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <div class="flex flex-wrap items-center gap-2">
-            <h3 class="text-lg font-bold text-slate-800 mr-2">Katalog Gerai & UMKM</h3>
-            <button onclick="setFilterTamu('semua')" id="ftamu-semua" class="px-3 py-1 rounded-full text-xs font-bold bg-red-600 text-white">Semua Barang</button>
-            <button onclick="setFilterTamu('umkm')" id="ftamu-umkm" class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900">Produk UMKM Warga</button>
+          <div>
+            <h3 class="text-lg font-extrabold text-slate-900">Katalog Barang & Produk UMKM Desa</h3>
+            <p class="text-xs text-slate-500">Cek ketersediaan stok, barang bersubsidi, maupun produk UMKM warga sebelum datang ke gerai.</p>
           </div>
-          <input type="text" id="search-tamu" oninput="renderKatalogTamu()" placeholder="Cari sembako atau produk UMKM..." class="border border-slate-300 rounded-xl px-3.5 py-2 text-sm w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-red-500" />
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="flex flex-wrap gap-1">
+              <button onclick="setFilterTamu('semua')" id="ftamu-semua" class="px-3 py-1 rounded-full text-xs font-bold bg-red-600 text-white">Semua</button>
+              <button onclick="setFilterTamu('subsidi')" id="ftamu-subsidi" class="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-900">Barang Subsidi</button>
+              <button onclick="setFilterTamu('nonsubsidi')" id="ftamu-nonsubsidi" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700">Non-Subsidi</button>
+              <button onclick="setFilterTamu('umkm')" id="ftamu-umkm" class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900">Produk UMKM</button>
+            </div>
+            <input type="text" id="search-tamu" oninput="renderKatalogTamu()" placeholder="Cari beras, gas, telur..." class="border border-slate-300 rounded-xl px-3.5 py-2 text-xs w-48 focus:outline-none focus:border-red-500" />
+          </div>
         </div>
         <div id="grid-katalog-tamu" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
       </div>
 
-      <!-- Daftar Nama Anggota -->
-      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-        <h3 class="text-base font-bold text-slate-800 mb-1">Daftar Anggota Aktif KDMP Karangcegak</h3>
-        <p class="text-xs text-slate-500 mb-3">Demi keamanan data warga, halaman publik hanya menampilkan nama anggota terdaftar.</p>
-        <div id="list-anggota-publik" class="flex flex-wrap gap-2"></div>
+      <!-- Daftar Nama Anggota & Info Pendaftaran -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+          <h3 class="font-bold text-slate-900 mb-1">Daftar Anggota Terdaftar</h3>
+          <p class="text-xs text-slate-500 mb-3">Warga Desa Karangcegak yang tergabung sebagai anggota koperasi.</p>
+          <div id="list-anggota-publik" class="flex flex-wrap gap-2"></div>
+        </div>
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex flex-col justify-between space-y-3">
+          <div>
+            <h3 class="font-bold text-amber-900 mb-1">Cara Menjadi Anggota Koperasi</h3>
+            <p class="text-xs text-amber-800 leading-relaxed" id="profil-syarat">-</p>
+          </div>
+          <button onclick="document.getElementById('modal-daftar-mandiri').classList.remove('hidden')" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs shadow-sm">
+            Isi Formulir Pendaftaran Online Sekarang
+          </button>
+        </div>
       </div>
     </section>
 
     <!-- ==================== MODE 2: ANGGOTA / MEMBER ==================== -->
     <section id="view-member" class="hidden space-y-6">
-      <div id="member-login-box" class="max-w-md mx-auto bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
-        <div>
-          <h2 class="text-lg font-bold text-slate-800 mb-1">Login Anggota Koperasi</h2>
-          <p class="text-xs text-slate-500">Gunakan Nomor Anggota (contoh: <code class="bg-slate-100 px-1 rounded">KDMP-0001003KC</code>) dan Password Anda.</p>
-        </div>
+      <div id="member-login-box" class="max-w-md mx-auto bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-800 mb-1">Masuk Portal Anggota</h2>
+        <p class="text-xs text-slate-500 mb-4">Gunakan <strong>Nomor Anggota</strong> atau <strong>Nomor HP/WhatsApp</strong> yang terdaftar.</p>
         <form onsubmit="handleMemberLogin(event)" class="space-y-3">
           <div>
-            <label class="block text-xs font-semibold mb-1">Nomor Anggota</label>
-            <input type="text" id="login-nomor-anggota" required placeholder="KDMP-0001003KC" class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm uppercase" />
+            <label class="block text-xs font-semibold mb-1">Nomor Anggota atau Nomor HP / WA</label>
+            <input type="text" id="login-nomor-anggota" required placeholder="KDMP-0001003KC atau 0812xxxx" class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm" />
           </div>
           <div>
             <label class="block text-xs font-semibold mb-1">Password</label>
             <input type="password" id="login-password-anggota" required placeholder="Masukkan password" class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm" />
           </div>
-          <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-sm transition">Masuk ke Akun Anggota</button>
+          <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-sm transition">Masuk Akun Anggota</button>
         </form>
-        <div class="border-t pt-3 text-center">
-          <p class="text-xs text-slate-500 mb-2">Belum punya Nomor Anggota?</p>
-          <button onclick="document.getElementById('modal-daftar-mandiri').classList.remove('hidden')" class="text-xs font-bold text-red-600 hover:underline">Isi Formulir Pendaftaran Mandiri di Sini &rarr;</button>
-        </div>
       </div>
 
       <div id="member-dashboard" class="hidden space-y-6">
-        <div class="bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p class="text-xs text-slate-500">Selamat datang kembali,</p>
-            <h2 class="text-lg font-extrabold text-slate-800" id="m-nama">-</h2>
-            <p class="text-xs font-semibold text-amber-600">Saldo Poin Belanja Anda: <span id="m-poin" class="text-base font-extrabold">0</span> Poin</p>
+            <p class="text-xs text-slate-500">Selamat datang,</p>
+            <h2 class="text-lg font-extrabold text-slate-900" id="m-nama">-</h2>
           </div>
-          <div class="flex flex-wrap gap-1.5">
-            <button onclick="switchMemberTab('belanja')" id="mtab-belanja" class="px-3 py-2 rounded-xl text-xs font-bold bg-red-600 text-white">Belanja & Pesan</button>
-            <button onclick="switchMemberTab('tukar')" id="mtab-tukar" class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">Tukar Poin</button>
-            <button onclick="switchMemberTab('kartu')" id="mtab-kartu" class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">Kartu Virtual & QR</button>
-            <button onclick="switchMemberTab('sandi')" id="mtab-sandi" class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">Password</button>
-            <button onclick="logoutMember()" class="px-3 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-600">Keluar</button>
+          <div class="flex flex-wrap items-center gap-3">
+            <div id="badge-poin-member-header" class="bg-amber-50 border border-amber-200 px-3.5 py-1.5 rounded-xl text-right">
+              <p class="text-[10px] text-amber-700 font-semibold">Saldo Poin Belanja</p>
+              <p class="text-base font-extrabold text-amber-600"><span id="m-poin">0</span> Poin <span class="text-[10px] font-semibold text-amber-800" id="m-poin-rupiah">(Rp 0)</span></p>
+            </div>
+            <button onclick="logoutMember()" class="text-xs text-rose-600 font-bold hover:underline">Keluar</button>
           </div>
         </div>
 
-        <!-- Tab 1: Belanja & Keranjang -->
+        <div class="flex flex-wrap gap-2">
+          <button onclick="switchMemberTab('belanja')" id="mtab-belanja" class="px-3 py-2 rounded-xl text-xs font-bold bg-red-600 text-white">1. Belanja & Titip Ambil</button>
+          <button onclick="switchMemberTab('tukar')" id="mtab-tukar" class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">2. Tukar Poin Hadiah</button>
+          <button onclick="switchMemberTab('kartu')" id="mtab-kartu" class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">3. Kartu Virtual & QR</button>
+          <button onclick="switchMemberTab('sandi')" id="mtab-sandi" class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">4. Ganti Password</button>
+        </div>
+
+        <!-- Tab 1: Belanja -->
         <div id="member-pane-belanja" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div class="lg:col-span-2 space-y-4">
-            <h3 class="font-bold text-slate-800">Pilih Barang Tersedia (Gerai & UMKM)</h3>
+          <div class="lg:col-span-2 space-y-3">
+            <h3 class="font-bold text-slate-800">Pilih Barang Kebutuhan Anda</h3>
             <div id="grid-katalog-member" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
           </div>
-          <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm h-fit space-y-4">
-            <h3 class="font-bold text-slate-800 border-b pb-2">Keranjang Belanja</h3>
+          <div class="bg-white rounded-2xl border border-slate-200 p-4 h-fit space-y-4">
+            <h3 class="font-bold text-slate-800 border-b pb-2">Keranjang & Pengambilan</h3>
             <div id="keranjang-list" class="space-y-2 text-xs text-slate-600">Keranjang masih kosong.</div>
-            <div class="border-t pt-3 space-y-3 text-xs">
-              <div>
-                <label class="font-bold block mb-1">Metode Pengambilan Barang:</label>
-                <select id="metode-ambil" onchange="toggleOpsiAmbil()" class="w-full border border-slate-300 rounded-lg p-2">
-                  <option value="Ambil Hari Ini di Gerai">Ambil Hari Ini di Gerai (Gratis)</option>
-                  <option value="Ambil Terjadwal">Ambil Terjadwal (Pilih Tanggal/Jam)</option>
-                  <option value="Kirim Kurir Desa">Antar Kurir Desa (+Ongkir Rp 5.000)</option>
-                </select>
-              </div>
+            <div class="space-y-2 pt-2 border-t text-xs">
+              <label class="font-bold block">Metode Pengambilan:</label>
+              <select id="metode-ambil" onchange="toggleOpsiAmbil()" class="w-full border border-slate-300 rounded-lg p-2">
+                <option value="Ambil Hari Ini di Gerai">Ambil Hari Ini di Gerai (Gratis)</option>
+                <option value="Titip Ambil Hari Tertentu">Titip & Ambil Hari Tertentu (Gratis)</option>
+                <option value="Kirim Kurir Desa" id="opt-kurir-desa">Kirim Kurir Desa (Ongkir Rp 5.000)</option>
+              </select>
               <div id="box-detail-ambil" class="hidden">
-                <label class="font-bold block mb-1" id="label-detail-ambil">Keterangan:</label>
-                <input type="text" id="input-detail-ambil" placeholder="Tulis jadwal atau alamat lengkap..." class="w-full border border-slate-300 rounded-lg p-2" />
+                <input type="text" id="input-detail-ambil" placeholder="Tulis hari pengambilan / alamat lengkap" class="w-full border border-slate-300 rounded-lg p-2 mt-1" />
               </div>
-              <div class="flex justify-between font-extrabold text-sm text-slate-900 pt-1">
+
+              <!-- Opsi Pakai Poin Jadi Diskon Rupiah -->
+              <div id="box-pakai-poin-member" class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 space-y-1.5">
+                <label class="flex items-center gap-2 font-bold text-amber-950 cursor-pointer">
+                  <input type="checkbox" id="chk-pakai-poin-member" onchange="renderKeranjang()" class="rounded text-red-600" />
+                  <span>Gunakan Poin sebagai Potongan Harga</span>
+                </label>
+                <p class="text-[10px] text-amber-800" id="info-konversi-poin-member">Saldo poin Anda bernilai Rp 0</p>
+              </div>
+
+              <div class="flex justify-between font-bold text-sm pt-2">
                 <span>Total Bayar:</span>
-                <span id="total-keranjang">Rp 0</span>
+                <span class="text-red-600" id="total-keranjang">Rp 0</span>
               </div>
               <button onclick="checkoutPesanan()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition">Kirim Pesanan ke Kasir</button>
               <div id="box-notif-wa" class="hidden pt-1">
@@ -408,26 +397,26 @@
         <div class="bg-slate-900 text-white rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 no-print">
           <div>
             <h2 class="font-extrabold text-base">Dashboard Pengurus KDMP Karangcegak</h2>
-            <p class="text-xs text-slate-400">Kasir Umum & Anggota, Stock Opname, Laporan Keuangan Agrinas & Koperasi</p>
+            <p class="text-xs text-slate-400">Kasir POS (Scan KTP Subsidi), Opname, Laporan Keuangan, Poin & Ongkir</p>
           </div>
           <div class="flex flex-wrap gap-1.5">
             <button onclick="switchOwnerTab('kasir')" id="otab-kasir" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white">Kasir POS & Pesanan</button>
             <button onclick="switchOwnerTab('opname')" id="otab-opname" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300">Stock Opname</button>
-            <button onclick="switchOwnerTab('laporan')" id="otab-laporan" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300">Laporan Keuangan</button>
+            <button onclick="switchOwnerTab('laporan')" id="otab-laporan" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300">Laporan & Subsidi</button>
             <button onclick="switchOwnerTab('barang')" id="otab-barang" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300">Barang & Agrinas</button>
             <button onclick="switchOwnerTab('anggota')" id="otab-anggota" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300">Anggota & Kartu</button>
-            <button onclick="switchOwnerTab('profil')" id="otab-profil" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300">Profil & WA</button>
+            <button onclick="switchOwnerTab('profil')" id="otab-profil" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300">Profil, Poin & Ongkir</button>
           </div>
         </div>
 
-        <!-- OWNER TAB 1: KASIR POS GERAI (UMUM & ANGGOTA) + PESANAN ONLINE -->
+        <!-- OWNER TAB 1: KASIR POS GERAI -->
         <div id="owner-pane-kasir" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div class="lg:col-span-7 space-y-6">
             <div class="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
               <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2.5">
                 <div>
                   <h3 class="font-extrabold text-slate-800">1. Kasir Gerai (Pembeli Umum & Anggota)</h3>
-                  <p class="text-[11px] text-slate-500">Pilih barang terjual agar stok terpotong & omzet/HPP Agrinas tercatat otomatis.</p>
+                  <p class="text-[11px] text-slate-500">Jika ada <strong>Barang Subsidi</strong>, scan foto KTP pembeli muncul otomatis.</p>
                 </div>
                 <button onclick="toggleKameraKasirBox()" class="bg-slate-800 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg">Scan QR Member</button>
               </div>
@@ -445,13 +434,19 @@
                   <label class="font-bold block mb-1">Jenis Pembeli:</label>
                   <select id="kasir-tipe-pembeli" onchange="toggleInputMemberKasir()" class="w-full border border-slate-300 rounded-lg p-2 bg-white font-bold">
                     <option value="umum">Pembeli Umum (Non-Anggota / Tanpa Poin)</option>
-                    <option value="anggota">Anggota Koperasi (Dapat Poin)</option>
+                    <option value="anggota">Anggota Koperasi (Dapat / Pakai Poin)</option>
                   </select>
                 </div>
-                <div id="box-kasir-member-id" class="hidden">
-                  <label class="font-bold block mb-1 text-red-700">Nomor Anggota (Ketik / Scan QR):</label>
-                  <input type="text" id="kasir-nomor-anggota" oninput="cekNamaMemberKasir()" placeholder="KDMP-0001003KC" class="w-full border border-red-300 rounded-lg p-2 uppercase font-mono bg-white" />
-                  <p id="kasir-info-member" class="text-[10px] font-bold text-emerald-700 mt-1"></p>
+                <div id="box-kasir-member-id" class="hidden space-y-1.5">
+                  <div>
+                    <label class="font-bold block mb-1 text-red-700">No. Anggota / No. HP (Ketik / Scan QR):</label>
+                    <input type="text" id="kasir-nomor-anggota" oninput="cekNamaMemberKasir()" placeholder="KDMP-0001003KC atau 0812..." class="w-full border border-red-300 rounded-lg p-2 font-mono bg-white" />
+                    <p id="kasir-info-member" class="text-[10px] font-bold text-emerald-700 mt-1"></p>
+                  </div>
+                  <label id="lbl-kasir-tukar-poin" class="hidden flex items-center gap-1.5 bg-amber-100 text-amber-950 p-2 rounded-lg font-bold cursor-pointer">
+                    <input type="checkbox" id="kasir-chk-pakai-poin" onchange="renderStrukKasir()" />
+                    <span id="kasir-teks-pakai-poin">Potong tagihan pakai saldo poin anggota</span>
+                  </label>
                 </div>
                 <div id="box-kasir-nama-umum">
                   <label class="font-bold block mb-1">Catatan Pembeli (Opsional):</label>
@@ -465,16 +460,42 @@
                 <div id="kasir-list-pilihan" class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-44 overflow-y-auto p-1"></div>
               </div>
 
+              <!-- KOTAK WAJIB NIK PEMBELI BARANG SUBSIDI -->
+              <div id="box-wajib-nik-subsidi" class="hidden bg-purple-50 border-2 border-purple-300 rounded-2xl p-4 space-y-3 text-xs">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span class="bg-purple-700 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">WAJIB PENDATAAN BARANG SUBSIDI</span>
+                    <h4 class="font-extrabold text-purple-950 text-sm mt-1">Verifikasi NIK Pembeli Barang Subsidi</h4>
+                  </div>
+                  <label class="cursor-pointer bg-purple-700 hover:bg-purple-800 text-white font-bold px-3 py-2 rounded-xl shadow flex items-center gap-1.5">
+                    <span>📷 Foto / Scan KTP Otomatis</span>
+                    <input type="file" id="kasir-foto-ktp" accept="image/*" capture="environment" onchange="scanKtpOtomatisOCR(event)" class="hidden" />
+                  </label>
+                </div>
+                <p id="status-ocr-ktp" class="hidden text-[11px] font-bold text-purple-800 bg-white px-3 py-1.5 rounded-lg border border-purple-200"></p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label class="font-bold block mb-1 text-purple-950">NIK Pembeli (16 Digit)*:</label>
+                    <input type="text" id="kasir-nik-subsidi" maxlength="16" placeholder="Otomatis dari foto KTP / ketik manual" class="w-full border border-purple-300 rounded-lg p-2.5 font-mono font-bold bg-white" />
+                  </div>
+                  <div>
+                    <label class="font-bold block mb-1 text-purple-950">Nama Sesuai KTP*:</label>
+                    <input type="text" id="kasir-nama-ktp" placeholder="Nama lengkap penerima subsidi" class="w-full border border-purple-300 rounded-lg p-2.5 bg-white font-semibold" />
+                  </div>
+                </div>
+              </div>
+
               <div class="border-t pt-3 space-y-2 text-xs">
                 <p class="font-bold text-slate-700">Daftar Belanja Struk Ini:</p>
                 <div id="kasir-struk-items" class="space-y-1.5 text-slate-600">Belum ada barang dipilih.</div>
                 <div class="bg-slate-900 text-white p-3 rounded-xl flex flex-wrap items-center justify-between gap-2 mt-2">
                   <div>
-                    <p class="text-[10px] text-slate-400">Total Tagihan</p>
+                    <p class="text-[10px] text-slate-400">Total Tagihan Akhir</p>
                     <p class="text-lg font-extrabold text-amber-400" id="kasir-total-rupiah">Rp 0</p>
+                    <p class="text-[10px] text-emerald-300 hidden" id="kasir-info-diskon-poin"></p>
                   </div>
                   <div class="text-right">
-                    <p class="text-[10px] text-slate-400">Estimasi Poin</p>
+                    <p class="text-[10px] text-slate-400">Estimasi Poin Baru</p>
                     <p class="text-sm font-bold text-emerald-400" id="kasir-estimasi-poin">0 Poin</p>
                   </div>
                 </div>
@@ -502,8 +523,7 @@
           <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-950 space-y-1">
             <p class="font-extrabold text-sm">Panduan Cepat Stock Opname Gerai:</p>
             <p>1. Hitung jumlah fisik nyata di <strong>Gudang</strong> dan di <strong>Display (Rak Depan)</strong> untuk setiap barang.</p>
-            <p>2. Sistem otomatis membandingkan <strong>Total Fisik (Gudang + Display)</strong> dengan <strong>Stok Sistem</strong> (yang sudah terpotong transaksi terjual).</p>
-            <p>3. Cocokkan total omzet sistem dengan uang kas nyata di bagian bawah sebelum mencetak Berita Acara Opname.</p>
+            <p>2. Sistem otomatis membandingkan <strong>Total Fisik (Gudang + Display)</strong> dengan <strong>Stok Sistem</strong>.</p>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -552,7 +572,7 @@
               <table class="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr class="border-b bg-slate-100 text-slate-700">
-                    <th class="p-2.5">Nama & Sumber Barang</th>
+                    <th class="p-2.5">Nama, Sumber & Status Subsidi</th>
                     <th class="p-2.5 text-center">Terjual</th>
                     <th class="p-2.5 text-center">Stok Sistem</th>
                     <th class="p-2.5 text-center bg-blue-50">Fisik Gudang</th>
@@ -590,14 +610,13 @@
           </div>
         </div>
 
-        <!-- OWNER TAB 3: LAPORAN KEUANGAN PERIODIK (BULANAN, TRIWULAN, SEMESTER, TAHUNAN & AGRINAS) -->
+        <!-- OWNER TAB 3: LAPORAN KEUANGAN PERIODIK & LOG PENYALURAN SUBSIDI -->
         <div id="owner-pane-laporan" class="hidden space-y-6">
-          <!-- Filter Periode Laporan -->
           <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
               <div>
-                <h3 class="font-extrabold text-slate-800 text-base">Laporan Keuangan & Bagi Hasil (Agrinas vs Koperasi)</h3>
-                <p class="text-xs text-slate-500">Pilih periode laporan untuk melihat perhitungan HPP, setoran pemasok, biaya operasional, dan Laba Bersih (SHU).</p>
+                <h3 class="font-extrabold text-slate-800 text-base">Laporan Keuangan Periodik (Agrinas, Koperasi & Barang Subsidi)</h3>
+                <p class="text-xs text-slate-500">Pilih periode untuk melihat HPP, setoran pemasok, Laba Bersih (SHU), dan log penerima barang subsidi.</p>
               </div>
               <div class="flex flex-wrap gap-2">
                 <button onclick="cetakLaporanKeuanganPDF()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow">Cetak Laporan Keuangan (PDF)</button>
@@ -653,10 +672,9 @@
               </div>
             </div>
 
-            <!-- Rincian Alokasi Uang per Sumber Barang (Agrinas vs Koperasi vs UMKM) -->
             <div class="border rounded-xl overflow-hidden">
               <div class="bg-slate-800 text-white px-4 py-2 text-xs font-bold">
-                Rincian Arus Barang & Kewajiban Setoran Berdasarkan Sumber Pasokan (<span id="judul-periode-aktif">Bulan Ini</span>)
+                A. Rincian Arus Barang Berdasarkan Sumber Pasokan (<span id="judul-periode-aktif">Bulan Ini</span>)
               </div>
               <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs border-collapse">
@@ -672,9 +690,53 @@
                 </table>
               </div>
             </div>
+
+            <div class="border border-purple-200 rounded-xl overflow-hidden">
+              <div class="bg-purple-800 text-white px-4 py-2 text-xs font-bold">
+                B. Rekap Penjualan Barang Subsidi vs Non-Subsidi
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr class="bg-purple-50 border-b text-purple-950">
+                      <th class="p-2.5">Kelompok Barang</th>
+                      <th class="p-2.5 text-right">Omzet Terjual</th>
+                      <th class="p-2.5 text-right">HPP / Nilai Tebus</th>
+                      <th class="p-2.5 text-right">Margin Koperasi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tabel-ringkasan-subsidi" class="divide-y"></tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
-          <!-- Input & Daftar Biaya Operasional Gerai -->
+          <div class="bg-white rounded-2xl border-2 border-purple-200 p-5 shadow-sm space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 class="font-extrabold text-purple-950">Log Penyaluran Barang Subsidi (Pencatatan NIK Penerima)</h3>
+                <p class="text-xs text-slate-500">Daftar warga/pembeli yang membeli barang berlabel Subsidi pada periode terpilih.</p>
+              </div>
+              <button onclick="cetakLogSubsidiPDF()" class="bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow">
+                Cetak Log Penerima Subsidi (PDF)
+              </button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="border-b bg-purple-50 text-purple-950">
+                    <th class="p-2.5">Tanggal</th>
+                    <th class="p-2.5">NIK Penerima (16 Digit)</th>
+                    <th class="p-2.5">Nama Sesuai KTP</th>
+                    <th class="p-2.5">Barang Subsidi yang Dibeli</th>
+                    <th class="p-2.5 text-right">Nominal</th>
+                  </tr>
+                </thead>
+                <tbody id="tabel-log-subsidi" class="divide-y"></tbody>
+              </table>
+            </div>
+          </div>
+
           <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
             <h3 class="font-bold text-slate-800">Catat Pengeluaran / Biaya Operasional Gerai</h3>
             <form onsubmit="tambahPengeluaranOperasional(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
@@ -700,15 +762,14 @@
             </div>
           </div>
 
-          <!-- Tabel Rincian Transaksi Periode Terpilih -->
           <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
-            <h3 class="font-bold text-slate-800">Rincian Transaksi Penjualan pada Periode Terpilih</h3>
+            <h3 class="font-bold text-slate-800">Rincian Seluruh Transaksi Penjualan pada Periode Terpilih</h3>
             <div class="overflow-x-auto">
               <table class="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr class="border-b bg-slate-50 text-slate-600">
                     <th class="p-2.5">Tanggal</th>
-                    <th class="p-2.5">Pembeli</th>
+                    <th class="p-2.5">Pembeli / NIK</th>
                     <th class="p-2.5">Rincian Barang</th>
                     <th class="p-2.5 text-right">Omzet</th>
                     <th class="p-2.5">Status</th>
@@ -720,14 +781,14 @@
           </div>
         </div>
 
-        <!-- OWNER TAB 4: KELOLA BARANG, PASOKAN AGRINAS & UMKM -->
+        <!-- OWNER TAB 4: KELOLA BARANG -->
         <div id="owner-pane-barang" class="hidden space-y-6">
           <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm no-print">
-            <h3 class="font-bold text-slate-800 mb-3">Tambah Barang (Pasokan Agrinas / Modal Koperasi / UMKM Warga)</h3>
+            <h3 class="font-bold text-slate-800 mb-3">Tambah Barang (Subsidi / Non-Subsidi / Pasokan Agrinas / UMKM)</h3>
             <form onsubmit="tambahProduk(event)" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div class="md:col-span-2">
                 <label class="block text-[11px] font-bold text-slate-600 mb-1">Nama Barang*</label>
-                <input type="text" id="p-nama" required placeholder="Contoh: Beras SPHP 5kg / Minyak Kita 1L" class="w-full border border-slate-300 rounded-lg p-2.5" />
+                <input type="text" id="p-nama" required placeholder="Contoh: LPG 3kg / Beras SPHP 5kg / Pupuk Urea" class="w-full border border-slate-300 rounded-lg p-2.5" />
               </div>
               <div>
                 <label class="block text-[11px] font-bold text-blue-800 mb-1">Sumber Pasokan Barang*</label>
@@ -738,20 +799,27 @@
                 </select>
               </div>
               <div>
+                <label class="block text-[11px] font-bold text-purple-800 mb-1">Kelompok Subsidi*</label>
+                <select id="p-subsidi" class="w-full border border-purple-300 bg-purple-50/50 rounded-lg p-2.5 font-bold text-purple-900">
+                  <option value="false">Non-Subsidi (Umum)</option>
+                  <option value="true">Barang Subsidi (Wajib NIK)</option>
+                </select>
+              </div>
+              <div>
                 <label class="block text-[11px] font-bold text-slate-600 mb-1">Kategori*</label>
-                <input type="text" id="p-kategori" required placeholder="Sembako / Subsidi / UMKM" class="w-full border border-slate-300 rounded-lg p-2.5" />
+                <input type="text" id="p-kategori" required placeholder="Sembako / Gas / Pupuk" class="w-full border border-slate-300 rounded-lg p-2.5" />
               </div>
               <div>
                 <label class="block text-[11px] font-bold text-slate-600 mb-1">Harga Modal / Tebus (HPP)*</label>
-                <input type="number" id="p-modal" required min="0" placeholder="Misal: 55000" class="w-full border border-slate-300 rounded-lg p-2.5" />
+                <input type="number" id="p-modal" required min="0" placeholder="Misal: 16000" class="w-full border border-slate-300 rounded-lg p-2.5" />
               </div>
               <div>
                 <label class="block text-[11px] font-bold text-red-700 mb-1">Harga Jual Gerai (Rp)*</label>
-                <input type="number" id="p-harga" required min="0" placeholder="Misal: 58000" class="w-full border border-red-300 rounded-lg p-2.5 font-bold" />
+                <input type="number" id="p-harga" required min="0" placeholder="Misal: 18000" class="w-full border border-red-300 rounded-lg p-2.5 font-bold" />
               </div>
               <div>
                 <label class="block text-[11px] font-bold text-slate-600 mb-1">Satuan*</label>
-                <input type="text" id="p-satuan" required placeholder="Sak / Pouch / Kg / Tabung" class="w-full border border-slate-300 rounded-lg p-2.5" />
+                <input type="text" id="p-satuan" required placeholder="Tabung / Sak / Pouch" class="w-full border border-slate-300 rounded-lg p-2.5" />
               </div>
               <div>
                 <label class="block text-[11px] font-bold text-slate-600 mb-1">Jumlah Stok Awal*</label>
@@ -761,9 +829,9 @@
                 <label class="block text-[11px] font-bold text-slate-600 mb-1">Foto Asli Barang (Opsional):</label>
                 <input type="file" id="p-foto" accept="image/*" class="w-full text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-red-50 file:text-red-700 file:font-bold" />
               </div>
-              <div id="box-p-pemilik-umkm" class="hidden md:col-span-2">
-                <label class="block text-[11px] font-bold text-amber-900 mb-1">Nama Warga Pelaku UMKM:</label>
-                <input type="text" id="p-pemilik-umkm" placeholder="Nama Warga / Kelompok UMKM" class="w-full border border-amber-300 rounded-lg p-2.5 bg-amber-50/40" />
+              <div id="box-p-pemilik-umkm" class="hidden">
+                <label class="block text-[11px] font-bold text-amber-900 mb-1">Nama Pelaku UMKM:</label>
+                <input type="text" id="p-pemilik-umkm" placeholder="Nama Warga UMKM" class="w-full border border-amber-300 rounded-lg p-2.5 bg-amber-50/40" />
               </div>
               <button type="submit" class="sm:col-span-2 md:col-span-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl">Simpan Barang ke Database</button>
             </form>
@@ -771,9 +839,9 @@
 
           <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-4 no-print">
-              <h3 class="font-bold text-slate-800">Daftar Barang, Sumber Pasokan & Harga Modal/Jual</h3>
+              <h3 class="font-bold text-slate-800">Daftar Barang, Sumber Pasokan & Status Subsidi</h3>
               <div class="flex flex-wrap items-center gap-2">
-                <input type="text" id="search-produk-owner" oninput="renderTabelProdukOwner()" placeholder="Cari barang..." class="border border-slate-300 rounded-xl px-3 py-1.5 text-xs w-48" />
+                <input type="text" id="search-produk-owner" oninput="renderTabelProdukOwner()" placeholder="Cari barang / subsidi..." class="border border-slate-300 rounded-xl px-3 py-1.5 text-xs w-48" />
                 <button onclick="cetakDaftarHarga()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3.5 py-2 rounded-xl">Cetak Daftar Harga Tersedia</button>
               </div>
             </div>
@@ -782,7 +850,7 @@
                 <thead>
                   <tr class="border-b bg-slate-50 text-slate-600">
                     <th class="p-2.5">Foto</th>
-                    <th class="p-2.5">Nama & Sumber Barang</th>
+                    <th class="p-2.5">Nama, Sumber & Status Subsidi</th>
                     <th class="p-2.5">Modal (HPP)</th>
                     <th class="p-2.5">Harga Jual</th>
                     <th class="p-2.5">Stok</th>
@@ -833,7 +901,7 @@
                 <input type="date" id="a-tgl" required class="w-full border border-slate-300 rounded-lg p-2.5" />
               </div>
               <div>
-                <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Nomor WhatsApp</label>
+                <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Nomor WhatsApp (Bisa untuk Login)*</label>
                 <input type="text" id="a-hp" placeholder="08xxxxxxxxxx" class="w-full border border-slate-300 rounded-lg p-2.5" />
               </div>
               <div class="sm:col-span-2">
@@ -851,14 +919,14 @@
           <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm no-print">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h3 class="font-bold text-slate-800">Database Anggota & Cetak Kartu Fisik</h3>
-              <input type="text" id="search-anggota-owner" oninput="renderTabelAnggotaOwner()" placeholder="Cari nama / NIK / nomor anggota..." class="border border-slate-300 rounded-lg px-3 py-1.5 text-xs w-64" />
+              <input type="text" id="search-anggota-owner" oninput="renderTabelAnggotaOwner()" placeholder="Cari nama / NIK / nomor anggota / HP..." class="border border-slate-300 rounded-lg px-3 py-1.5 text-xs w-64" />
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr class="border-b bg-slate-50 text-slate-600">
                     <th class="p-2.5">No. Anggota</th>
-                    <th class="p-2.5">Nama & NIK</th>
+                    <th class="p-2.5">Nama, NIK & No. HP</th>
                     <th class="p-2.5">TTL</th>
                     <th class="p-2.5">Poin</th>
                     <th class="p-2.5">Layanan Kartu</th>
@@ -923,49 +991,109 @@
           </div>
         </div>
 
-        <!-- OWNER TAB 6: PROFIL & NOMOR WA KASIR -->
-        <div id="owner-pane-profil" class="hidden bg-white rounded-2xl border border-slate-200 p-5 max-w-2xl">
-          <h3 class="font-bold text-slate-800 mb-3">Pengaturan Profil, WhatsApp Kasir & Password</h3>
-          <form onsubmit="simpanProfilKoperasi(event)" class="space-y-3 text-xs">
+        <!-- OWNER TAB 6: PROFIL, PENGATURAN POIN, HADIAH & ONGKIR -->
+        <div id="owner-pane-profil" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <h3 class="font-bold text-slate-800 mb-3">1. Pengaturan Profil, Ongkir Kurir & Aturan Poin</h3>
+            <form onsubmit="simpanProfilKoperasi(event)" class="space-y-3 text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="font-bold block mb-1">Nama Gerai</label>
+                  <input type="text" id="edit-nama-gerai" class="w-full border border-slate-300 rounded-lg p-2" />
+                </div>
+                <div>
+                  <label class="font-bold block mb-1">Nomor WhatsApp Kasir / Admin</label>
+                  <input type="text" id="edit-wa-gerai" placeholder="081234567890" class="w-full border border-slate-300 rounded-lg p-2" />
+                </div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="font-bold block mb-1">Alamat Lengkap</label>
+                  <input type="text" id="edit-alamat" class="w-full border border-slate-300 rounded-lg p-2" />
+                </div>
+                <div>
+                  <label class="font-bold block mb-1">Jam Operasional</label>
+                  <input type="text" id="edit-jam" class="w-full border border-slate-300 rounded-lg p-2" />
+                </div>
+              </div>
+              <div>
+                <label class="font-bold block mb-1">Syarat Pendaftaran Anggota</label>
+                <input type="text" id="edit-syarat" class="w-full border border-slate-300 rounded-lg p-2" />
+              </div>
+              <div>
+                <label class="font-bold block mb-1">Deskripsi Singkat</label>
+                <textarea id="edit-deskripsi" rows="2" class="w-full border border-slate-300 rounded-lg p-2"></textarea>
+              </div>
+
+              <!-- Pengaturan Ongkir & Sistem Poin -->
+              <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+                <h4 class="font-extrabold text-amber-950 text-sm">Pengaturan Ongkos Kirim & Poin Belanja Anggota</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="font-bold block mb-1 text-slate-800">Tarif Ongkir Kurir Desa (Rp)*</label>
+                    <input type="number" id="edit-tarif-ongkir" min="0" required class="w-full border border-amber-300 rounded-lg p-2 bg-white font-bold" />
+                  </div>
+                  <div>
+                    <label class="font-bold block mb-1 text-slate-800">Status Sistem Poin Anggota*</label>
+                    <select id="edit-poin-aktif" class="w-full border border-amber-300 rounded-lg p-2 bg-white font-bold">
+                      <option value="true">AKTIF (Anggota Dapat & Tukar Poin)</option>
+                      <option value="false">NONAKTIF (Tidak Dapat Poin)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="font-bold block mb-1 text-slate-800">Kelipatan Belanja per 1 Poin (Rp)*</label>
+                    <input type="number" id="edit-belanja-per-poin" min="100" required placeholder="Contoh: 5000" class="w-full border border-amber-300 rounded-lg p-2 bg-white font-bold" />
+                    <p class="text-[10px] text-amber-800 mt-0.5">Misal 5000 = belanja Rp 5.000 dapat 1 poin.</p>
+                  </div>
+                  <div>
+                    <label class="font-bold block mb-1 text-slate-800">Konversi 1 Poin ke Diskon Rupiah (Rp)*</label>
+                    <input type="number" id="edit-nilai-rupiah-poin" min="0" required placeholder="Contoh: 500" class="w-full border border-amber-300 rounded-lg p-2 bg-white font-bold" />
+                    <p class="text-[10px] text-amber-800 mt-0.5">Misal 500 = 1 poin memotong belanja Rp 500.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="font-bold block mb-1">Password Dashboard Owner</label>
+                <input type="text" id="edit-pass-owner" class="w-full border border-slate-300 rounded-lg p-2" />
+              </div>
+              <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold px-5 py-2.5 rounded-xl shadow">Simpan Semua Pengaturan</button>
+            </form>
+          </div>
+
+          <!-- Kelola Katalog Hadiah / Voucher Penukaran Poin -->
+          <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4 h-fit">
             <div>
-              <label class="font-bold block mb-1">Nama Gerai</label>
-              <input type="text" id="edit-nama-gerai" class="w-full border border-slate-300 rounded-lg p-2" />
+              <h3 class="font-bold text-slate-800">2. Katalog Hadiah & Voucher Poin</h3>
+              <p class="text-[11px] text-slate-500">Atur hadiah/barang apa saja yang bisa ditukar dengan poin anggota.</p>
             </div>
-            <div>
-              <label class="font-bold block mb-1">Nomor WhatsApp Kasir / Admin (Untuk Notifikasi Pesanan)</label>
-              <input type="text" id="edit-wa-gerai" placeholder="081234567890" class="w-full border border-slate-300 rounded-lg p-2" />
-            </div>
-            <div>
-              <label class="font-bold block mb-1">Alamat Lengkap</label>
-              <input type="text" id="edit-alamat" class="w-full border border-slate-300 rounded-lg p-2" />
-            </div>
-            <div>
-              <label class="font-bold block mb-1">Jam Operasional</label>
-              <input type="text" id="edit-jam" class="w-full border border-slate-300 rounded-lg p-2" />
-            </div>
-            <div>
-              <label class="font-bold block mb-1">Syarat Pendaftaran Anggota</label>
-              <input type="text" id="edit-syarat" class="w-full border border-slate-300 rounded-lg p-2" />
-            </div>
-            <div>
-              <label class="font-bold block mb-1">Deskripsi Singkat</label>
-              <textarea id="edit-deskripsi" rows="2" class="w-full border border-slate-300 rounded-lg p-2"></textarea>
-            </div>
-            <div>
-              <label class="font-bold block mb-1">Password Dashboard Owner</label>
-              <input type="text" id="edit-pass-owner" class="w-full border border-slate-300 rounded-lg p-2" />
-            </div>
-            <button type="submit" class="bg-red-600 text-white font-bold px-5 py-2.5 rounded-xl">Simpan Perubahan Profil</button>
-          </form>
+            <form onsubmit="tambahHadiahPoin(event)" class="space-y-2.5 text-xs bg-slate-50 p-3 rounded-xl border">
+              <div>
+                <label class="font-bold block mb-1">Nama Hadiah / Voucher Sembako*</label>
+                <input type="text" id="h-nama" required placeholder="Contoh: Minyak Goreng 1L / Voucher Rp 10.000" class="w-full border border-slate-300 rounded-lg p-2 bg-white" />
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="font-bold block mb-1">Poin Dibutuhkan*</label>
+                  <input type="number" id="h-poin" required min="1" placeholder="20" class="w-full border border-slate-300 rounded-lg p-2 bg-white" />
+                </div>
+                <div>
+                  <label class="font-bold block mb-1">Stok Kuota*</label>
+                  <input type="number" id="h-stok" required min="1" placeholder="50" class="w-full border border-slate-300 rounded-lg p-2 bg-white" />
+                </div>
+              </div>
+              <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 rounded-lg">+ Tambah ke Katalog Hadiah</button>
+            </form>
+            <div id="list-hadiah-owner" class="space-y-2 text-xs"></div>
+          </div>
         </div>
       </div>
     </section>
   </main>
 
   <div id="print-area" style="display: none;"></div>
-
   <script>
-    const SUPABASE_URL = 'https://nqngmswcsybndnrmuusb.supabase.co';
+    const SUPABASE_URL = '[https://nqngmswcsybndnrmuusb.supabase.co](https://nqngmswcsybndnrmuusb.supabase.co)';
     const SUPABASE_KEY = 'sb_publishable_kgopLEBI7PIn73ECogDtaQ__up6_JGJ';
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -992,6 +1120,34 @@
     };
 
     const rupiah = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
+
+    function getAturanPoin() {
+      const p = state.profil || {};
+      return {
+        aktif: p.sistem_poin_aktif !== false,
+        belanjaPerPoin: Math.max(1, Number(p.belanja_per_poin || 5000)),
+        nilaiRupiahPerPoin: Math.max(0, Number(p.nilai_rupiah_per_poin || 500)),
+        tarifOngkir: Math.max(0, Number(p.tarif_ongkir !== undefined ? p.tarif_ongkir : 5000))
+      };
+    }
+
+    function cariAnggotaByNomorAtauHp(inputStr) {
+      const raw = (inputStr || '').trim();
+      if (!raw) return null;
+      const upper = raw.toUpperCase();
+      const digitsOnly = raw.replace(/\D/g, '');
+      const normHp = digitsOnly.startsWith('62') ? '0' + digitsOnly.slice(2) : digitsOnly;
+
+      return state.anggota.find(a => {
+        if ((a.nomor_anggota || '').toUpperCase() === upper) return true;
+        if (normHp.length >= 8) {
+          const aDigits = (a.no_hp || '').replace(/\D/g, '');
+          const aNorm = aDigits.startsWith('62') ? '0' + aDigits.slice(2) : aDigits;
+          if (aNorm && aNorm === normHp) return true;
+        }
+        return false;
+      }) || null;
+    }
 
     function getNextUrutanStr() {
       let maxUrut = state.anggota.length;
@@ -1080,7 +1236,7 @@
           const refreshed = state.anggota.find(a => a.id === state.currentMember.id);
           if (refreshed) {
             state.currentMember = refreshed;
-            document.getElementById('m-poin').textContent = refreshed.poin;
+            updateHeaderPoinMember();
           }
         }
 
@@ -1092,8 +1248,22 @@
       }
     }
 
+    function updateHeaderPoinMember() {
+      if (!state.currentMember) return;
+      const aturan = getAturanPoin();
+      const saldoPoin = Number(state.currentMember.poin || 0);
+      const nilaiRp = saldoPoin * aturan.nilaiRupiahPerPoin;
+      document.getElementById('m-poin').textContent = saldoPoin;
+      document.getElementById('m-poin-rupiah').textContent = `(${rupiah(nilaiRp)})`;
+      document.getElementById('info-konversi-poin-member').textContent = `Saldo: ${saldoPoin} Poin = ${rupiah(nilaiRp)} (${rupiah(aturan.nilaiRupiahPerPoin)}/poin)`;
+      document.getElementById('badge-poin-member-header').classList.toggle('hidden', !aturan.aktif);
+      document.getElementById('box-pakai-poin-member').classList.toggle('hidden', !aturan.aktif || saldoPoin <= 0 || aturan.nilaiRupiahPerPoin <= 0);
+    }
+
     function renderSemua() {
       const p = state.profil;
+      const aturan = getAturanPoin();
+
       document.getElementById('header-nama').textContent = p.nama_gerai || 'KDMP Karangcegak';
       document.getElementById('profil-judul').textContent = p.nama_gerai || 'Koperasi Desa Merah Putih Karangcegak';
       document.getElementById('profil-deskripsi').textContent = p.deskripsi || '';
@@ -1102,12 +1272,18 @@
       document.getElementById('profil-syarat').textContent = p.info_pendaftaran || '';
       document.getElementById('profil-total-anggota').textContent = state.anggota.length + ' Warga';
 
+      document.getElementById('opt-kurir-desa').textContent = `Kirim Kurir Desa (Ongkir ${rupiah(aturan.tarifOngkir)})`;
+
       document.getElementById('edit-nama-gerai').value = p.nama_gerai || '';
       document.getElementById('edit-wa-gerai').value = p.kontak_wa || '';
       document.getElementById('edit-alamat').value = p.alamat || '';
       document.getElementById('edit-jam').value = p.jam_operasional || '';
       document.getElementById('edit-syarat').value = p.info_pendaftaran || '';
       document.getElementById('edit-deskripsi').value = p.deskripsi || '';
+      document.getElementById('edit-tarif-ongkir').value = aturan.tarifOngkir;
+      document.getElementById('edit-poin-aktif').value = aturan.aktif ? 'true' : 'false';
+      document.getElementById('edit-belanja-per-poin').value = aturan.belanjaPerPoin;
+      document.getElementById('edit-nilai-rupiah-poin').value = aturan.nilaiRupiahPerPoin;
       document.getElementById('edit-pass-owner').value = p.password_owner || 'karangcegak2026';
 
       const nextUrut = getNextUrutanStr();
@@ -1124,6 +1300,7 @@
       renderKatalogTamu();
       renderKatalogMember();
       renderHadiahMember();
+      renderHadiahOwner();
       renderPilihanBarangKasir();
       renderTabelProdukOwner();
       renderCalonAnggotaOwner();
@@ -1147,15 +1324,18 @@
       });
     }
 
-    // ==================== KATALOG TAMU & UMKM ====================
+    // ==================== KATALOG TAMU, SUBSIDI & UMKM ====================
     function setFilterTamu(mode) {
       state.filterTamu = mode;
-      document.getElementById('ftamu-semua').className = mode === 'semua'
-        ? 'px-3 py-1 rounded-full text-xs font-bold bg-red-600 text-white'
-        : 'px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700';
-      document.getElementById('ftamu-umkm').className = mode === 'umkm'
-        ? 'px-3 py-1 rounded-full text-xs font-bold bg-amber-500 text-white'
-        : 'px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900';
+      const styles = {
+        semua: ['bg-red-600 text-white', 'bg-slate-200 text-slate-700'],
+        subsidi: ['bg-purple-700 text-white', 'bg-purple-100 text-purple-900'],
+        nonsubsidi: ['bg-slate-800 text-white', 'bg-slate-200 text-slate-700'],
+        umkm: ['bg-amber-500 text-white', 'bg-amber-100 text-amber-900']
+      };
+      Object.keys(styles).forEach(k => {
+        document.getElementById('ftamu-' + k).className = `px-3 py-1 rounded-full text-xs font-bold ${mode === k ? styles[k][0] : styles[k][1]}`;
+      });
       renderKatalogTamu();
     }
 
@@ -1164,19 +1344,26 @@
       const filtered = state.produk.filter(item => {
         const matchText = item.nama.toLowerCase().includes(q) || (item.pemilik_umkm || '').toLowerCase().includes(q);
         const isUmkmItem = item.sumber_barang === 'UMKM Warga' || item.is_umkm === true;
-        const matchUmkm = state.filterTamu === 'umkm' ? isUmkmItem : true;
-        return matchText && matchUmkm;
+        const isSubsidiItem = item.is_subsidi === true;
+        if (state.filterTamu === 'subsidi') return matchText && isSubsidiItem;
+        if (state.filterTamu === 'nonsubsidi') return matchText && !isSubsidiItem;
+        if (state.filterTamu === 'umkm') return matchText && isUmkmItem;
+        return matchText;
       });
       const grid = document.getElementById('grid-katalog-tamu');
       grid.innerHTML = filtered.length ? filtered.map(item => {
         const isUmkmItem = item.sumber_barang === 'UMKM Warga' || item.is_umkm === true;
+        const isSubsidiItem = item.is_subsidi === true;
         return `
         <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
           <div class="aspect-square bg-slate-100 relative overflow-hidden">
             ${item.foto_url
               ? `<img src="${item.foto_url}" alt="${item.nama}" class="w-full h-full object-cover ${item.stok <= 0 ? 'grayscale opacity-60' : ''}" />`
               : `<div class="w-full h-full flex items-center justify-center text-slate-400 text-xs">Tanpa Foto</div>`}
-            ${isUmkmItem ? `<span class="absolute top-2 left-2 bg-amber-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow">UMKM Desa</span>` : ''}
+            <div class="absolute top-2 left-2 flex flex-col gap-1">
+              ${isSubsidiItem ? `<span class="bg-purple-700 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow">SUBSIDI</span>` : ''}
+              ${isUmkmItem ? `<span class="bg-amber-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow">UMKM Desa</span>` : ''}
+            </div>
             <span class="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${item.stok > 0 ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-white'}">
               ${item.stok > 0 ? 'Stok: ' + item.stok : 'Habis'}
             </span>
@@ -1185,6 +1372,7 @@
             <div>
               <p class="text-[10px] text-slate-400 uppercase font-semibold">${item.kategori}</p>
               <h4 class="font-bold text-sm text-slate-800 line-clamp-2">${item.nama}</h4>
+              ${isSubsidiItem ? `<p class="text-[10px] text-purple-700 font-semibold mt-0.5">*Pembelian wajib bawa KTP/NIK</p>` : ''}
               ${isUmkmItem && item.pemilik_umkm ? `<p class="text-[10px] text-amber-700 font-semibold mt-0.5">Karya: ${item.pemilik_umkm}</p>` : ''}
             </div>
             <p class="text-red-600 font-extrabold text-sm mt-2">${rupiah(item.harga)} <span class="text-[10px] font-normal text-slate-500">/ ${item.satuan}</span></p>
@@ -1212,18 +1400,21 @@
       initApp();
     }
 
-    // ==================== LOGIKA ANGGOTA & TUKAR POIN ====================
+    // ==================== LOGIKA ANGGOTA (LOGIN NO. ANGGOTA / NO. HP & POIN) ====================
     function handleMemberLogin(e) {
       e.preventDefault();
-      const no = document.getElementById('login-nomor-anggota').value.trim().toUpperCase();
+      const inputId = document.getElementById('login-nomor-anggota').value.trim();
       const pw = document.getElementById('login-password-anggota').value;
-      const found = state.anggota.find(a => a.nomor_anggota.toUpperCase() === no && a.password === pw);
-      if (!found) return alert('Nomor Anggota atau Password salah!');
+      const found = cariAnggotaByNomorAtauHp(inputId);
+      if (!found || found.password !== pw) {
+        return alert('Nomor Anggota / Nomor HP atau Password salah!');
+      }
       state.currentMember = found;
       document.getElementById('member-login-box').classList.add('hidden');
       document.getElementById('member-dashboard').classList.remove('hidden');
       document.getElementById('m-nama').textContent = found.nama + ' (' + found.nomor_anggota + ')';
-      document.getElementById('m-poin').textContent = found.poin;
+      updateHeaderPoinMember();
+
       document.getElementById('card-m-nomor').textContent = found.nomor_anggota;
       document.getElementById('card-m-nama').textContent = found.nama;
       document.getElementById('card-m-gabung').textContent = 'Bergabung: ' + (found.tanggal_gabung || '-');
@@ -1232,6 +1423,7 @@
       qrBox.innerHTML = '';
       new QRCode(qrBox, { text: found.nomor_anggota, width: 64, height: 64 });
       renderHadiahMember();
+      renderKeranjang();
     }
 
     function logoutMember() {
@@ -1257,7 +1449,10 @@
           <div>
             <div class="aspect-square bg-slate-100 rounded-lg overflow-hidden mb-2 relative">
               ${item.foto_url ? `<img src="${item.foto_url}" class="w-full h-full object-cover" />` : ''}
-              ${(item.sumber_barang === 'UMKM Warga' || item.is_umkm) ? `<span class="absolute top-1.5 left-1.5 bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">UMKM</span>` : ''}
+              <div class="absolute top-1.5 left-1.5 flex flex-col gap-1">
+                ${item.is_subsidi ? `<span class="bg-purple-700 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">SUBSIDI</span>` : ''}
+                ${(item.sumber_barang === 'UMKM Warga' || item.is_umkm) ? `<span class="bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">UMKM</span>` : ''}
+              </div>
             </div>
             <h4 class="font-bold text-xs text-slate-800 line-clamp-2">${item.nama}</h4>
             <p class="text-red-600 font-extrabold text-xs mt-1">${rupiah(item.harga)} <span class="text-[10px] font-normal text-slate-400">/ ${item.satuan}</span></p>
@@ -1271,7 +1466,12 @@
 
     function renderHadiahMember() {
       if (!state.currentMember) return;
+      const aturan = getAturanPoin();
       const grid = document.getElementById('grid-hadiah-member');
+      if (!aturan.aktif) {
+        grid.innerHTML = '<p class="col-span-full text-xs text-slate-500 bg-slate-100 p-4 rounded-xl">Program penukaran poin sedang dinonaktifkan sementara oleh pengurus.</p>';
+        return;
+      }
       grid.innerHTML = state.hadiahPoin.map(h => {
         const cukup = state.currentMember.poin >= h.poin_dibutuhkan && h.stok > 0;
         return `
@@ -1335,6 +1535,7 @@
         harga: Number(prod.harga),
         harga_modal: Number(prod.harga_modal || 0),
         sumber_barang: prod.sumber_barang || (prod.is_umkm ? 'UMKM Warga' : 'Modal Koperasi'),
+        is_subsidi: prod.is_subsidi === true,
         qty: 1
       });
       renderKeranjang();
@@ -1346,6 +1547,24 @@
       renderKeranjang();
     }
 
+    function hitungRingkasanKeranjangMember() {
+      const aturan = getAturanPoin();
+      const ongkir = document.getElementById('metode-ambil').value === 'Kirim Kurir Desa' ? aturan.tarifOngkir : 0;
+      const subtotal = state.keranjang.reduce((s, i) => s + i.harga * i.qty, 0);
+      const pakaiPoin = document.getElementById('chk-pakai-poin-member').checked && aturan.aktif && state.currentMember;
+
+      let poinDipakai = 0;
+      let diskonPoin = 0;
+      if (pakaiPoin && aturan.nilaiRupiahPerPoin > 0) {
+        const saldoPoin = Number(state.currentMember.poin || 0);
+        const maksPoinTagihan = Math.floor((subtotal + ongkir) / aturan.nilaiRupiahPerPoin);
+        poinDipakai = Math.min(saldoPoin, maksPoinTagihan);
+        diskonPoin = poinDipakai * aturan.nilaiRupiahPerPoin;
+      }
+      const totalAkhir = Math.max(0, subtotal + ongkir - diskonPoin);
+      return { subtotal, ongkir, poinDipakai, diskonPoin, totalAkhir };
+    }
+
     function renderKeranjang() {
       const box = document.getElementById('keranjang-list');
       if (!state.keranjang.length) {
@@ -1353,36 +1572,44 @@
         document.getElementById('total-keranjang').textContent = 'Rp 0';
         return;
       }
-      const ongkir = document.getElementById('metode-ambil').value === 'Kirim Kurir Desa' ? 5000 : 0;
-      const subtotal = state.keranjang.reduce((s, i) => s + i.harga * i.qty, 0);
+      const calc = hitungRingkasanKeranjangMember();
       box.innerHTML = state.keranjang.map((item, idx) => `
         <div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
           <div>
-            <p class="font-bold text-slate-800">${item.nama}</p>
+            <p class="font-bold text-slate-800">${item.nama} ${item.is_subsidi ? '<span class="text-[9px] text-purple-700 font-extrabold">[SUBSIDI]</span>' : ''}</p>
             <p class="text-[11px]">${item.qty} x ${rupiah(item.harga)}</p>
           </div>
           <button onclick="state.keranjang.splice(${idx},1);renderKeranjang()" class="text-rose-600 font-bold px-2">Hapus</button>
         </div>
-      `).join('');
-      document.getElementById('total-keranjang').textContent = rupiah(subtotal + ongkir);
+      `).join('') + (calc.diskonPoin > 0 ? `<div class="bg-emerald-50 text-emerald-800 p-2 rounded-lg font-bold text-[11px]">Potongan Poin (${calc.poinDipakai} Poin): -${rupiah(calc.diskonPoin)}</div>` : '');
+
+      document.getElementById('total-keranjang').textContent = rupiah(calc.totalAkhir);
     }
 
     async function checkoutPesanan() {
       if (!state.keranjang.length) return alert('Keranjang belanja masih kosong.');
       const metode = document.getElementById('metode-ambil').value;
       const detail = document.getElementById('input-detail-ambil').value;
-      const ongkir = metode === 'Kirim Kurir Desa' ? 5000 : 0;
       const itemsCopy = [...state.keranjang];
-      const total = itemsCopy.reduce((s, i) => s + i.harga * i.qty, 0) + ongkir;
+      const calc = hitungRingkasanKeranjangMember();
+
+      if (calc.poinDipakai > 0) {
+        const sisaPoin = Math.max(0, Number(state.currentMember.poin) - calc.poinDipakai);
+        await db.from('anggota').update({ poin: sisaPoin }).eq('id', state.currentMember.id);
+      }
 
       const { error } = await db.from('pesanan').insert([{
         nomor_anggota: state.currentMember.nomor_anggota,
         nama_anggota: state.currentMember.nama,
+        nik_pembeli: state.currentMember.nik || '',
+        nama_ktp_subsidi: state.currentMember.nama,
         daftar_barang: itemsCopy,
-        total_harga: total,
+        total_harga: calc.totalAkhir,
         metode_ambil: metode,
         jadwal_atau_alamat: detail,
-        ongkir: ongkir,
+        ongkir: calc.ongkir,
+        poin_dipakai: calc.poinDipakai,
+        diskon_poin: calc.diskonPoin,
         status: 'Menunggu Diproses'
       }]);
 
@@ -1391,12 +1618,14 @@
       let waRaw = (state.profil.kontak_wa || '081234567890').replace(/\D/g, '');
       if (waRaw.startsWith('0')) waRaw = '62' + waRaw.slice(1);
       const rincianText = itemsCopy.map(b => `- ${b.nama} (${b.qty}x)`).join('%0A');
-      const pesanWA = `Halo Admin KDMP Karangcegak,%0ASaya *${state.currentMember.nama}* (${state.currentMember.nomor_anggota}) baru saja membuat pesanan:%0A${rincianText}%0A*Metode:* ${metode} ${detail ? '(' + detail + ')' : ''}%0A*Total:* ${rupiah(total)}%0AMohon diproses ya. Terima kasih.`;
-      document.getElementById('link-wa-pesanan').href = `https://wa.me/${waRaw}?text=${pesanWA}`;
+      const infoDiskon = calc.diskonPoin > 0 ? `%0A*Potongan Poin:* -${rupiah(calc.diskonPoin)} (${calc.poinDipakai} poin)` : '';
+      const pesanWA = `Halo Admin KDMP Karangcegak,%0ASaya *${state.currentMember.nama}* (${state.currentMember.nomor_anggota}) baru saja membuat pesanan:%0A${rincianText}%0A*Metode:* ${metode} ${detail ? '(' + detail + ')' : ''}${infoDiskon}%0A*Total Bayar:* ${rupiah(calc.totalAkhir)}%0AMohon diproses ya. Terima kasih.`;
+      document.getElementById('link-wa-pesanan').href = `[https://wa.me/$](https://wa.me/$){waRaw}?text=${pesanWA}`;
       document.getElementById('box-notif-wa').classList.remove('hidden');
 
       alert('Pesanan tersimpan! Silakan klik tombol hijau di bawah keranjang untuk mengirim notifikasi ke WhatsApp Kasir.');
       state.keranjang = [];
+      document.getElementById('chk-pakai-poin-member').checked = false;
       renderKeranjang();
       initApp();
     }
@@ -1410,7 +1639,7 @@
       document.getElementById('new-member-pass').value = '';
     }
 
-    // ==================== LOGIKA OWNER & KASIR POS ====================
+    // ==================== LOGIKA OWNER, KASIR POS & SCAN KTP OCR ====================
     function handleOwnerLogin(e) {
       e.preventDefault();
       const pw = document.getElementById('login-pass-owner').value;
@@ -1436,21 +1665,89 @@
       const tipe = document.getElementById('kasir-tipe-pembeli').value;
       document.getElementById('box-kasir-member-id').classList.toggle('hidden', tipe !== 'anggota');
       document.getElementById('box-kasir-nama-umum').classList.toggle('hidden', tipe === 'anggota');
+      cekNamaMemberKasir();
       renderStrukKasir();
     }
 
     function cekNamaMemberKasir() {
-      const no = (document.getElementById('kasir-nomor-anggota').value || '').trim().toUpperCase();
-      const m = state.anggota.find(a => a.nomor_anggota.toUpperCase() === no);
-      document.getElementById('kasir-info-member').textContent = m ? `Anggota: ${m.nama} (Poin: ${m.poin})` : (no ? 'Nomor anggota belum ditemukan' : '');
+      const tipe = document.getElementById('kasir-tipe-pembeli').value;
+      const lblTukar = document.getElementById('lbl-kasir-tukar-poin');
+      if (tipe !== 'anggota') {
+        lblTukar.classList.add('hidden');
+        return;
+      }
+      const no = document.getElementById('kasir-nomor-anggota').value;
+      const m = cariAnggotaByNomorAtauHp(no);
+      const aturan = getAturanPoin();
+      const nilaiRp = m ? Number(m.poin || 0) * aturan.nilaiRupiahPerPoin : 0;
+
+      document.getElementById('kasir-info-member').textContent = m
+        ? `Anggota: ${m.nama} (Poin: ${m.poin} = ${rupiah(nilaiRp)})`
+        : (no ? 'Nomor anggota / HP belum ditemukan' : '');
+
+      if (m && aturan.aktif && m.poin > 0 && aturan.nilaiRupiahPerPoin > 0) {
+        lblTukar.classList.remove('hidden');
+        document.getElementById('kasir-teks-pakai-poin').textContent = `Potong tagihan pakai ${m.poin} poin (maks. ${rupiah(nilaiRp)})`;
+      } else {
+        lblTukar.classList.add('hidden');
+        document.getElementById('kasir-chk-pakai-poin').checked = false;
+      }
+
+      if (m) {
+        document.getElementById('kasir-nik-subsidi').value = m.nik || '';
+        document.getElementById('kasir-nama-ktp').value = m.nama || '';
+      }
+      renderStrukKasir();
+    }
+
+    async function scanKtpOtomatisOCR(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const statusEl = document.getElementById('status-ocr-ktp');
+      statusEl.classList.remove('hidden');
+      statusEl.textContent = '⏳ Membaca foto KTP secara otomatis (mohon tunggu 3-5 detik)...';
+
+      try {
+        const result = await Tesseract.recognize(file, 'ind');
+        const rawText = result.data.text || '';
+        const cleanDigits = rawText.replace(/[Oo]/g, '0').replace(/[Il|]/g, '1');
+        const nikMatch = cleanDigits.match(/\b\d{16}\b/);
+
+        let detectedNama = '';
+        const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+        for (let i = 0; i < lines.length; i++) {
+          if (/nama/i.test(lines[i])) {
+            const afterColon = lines[i].replace(/.*nama\s*[:\-]?\s*/i, '').trim();
+            if (afterColon.length >= 3) {
+              detectedNama = afterColon.replace(/[^A-Za-z\s'.]/g, '').trim();
+            } else if (lines[i + 1]) {
+              detectedNama = lines[i + 1].replace(/[^A-Za-z\s'.]/g, '').trim();
+            }
+            break;
+          }
+        }
+
+        if (nikMatch) {
+          document.getElementById('kasir-nik-subsidi').value = nikMatch[0];
+          if (detectedNama) document.getElementById('kasir-nama-ktp').value = detectedNama.toUpperCase();
+          statusEl.textContent = `✅ NIK berhasil terbaca: ${nikMatch[0]}${detectedNama ? ' (' + detectedNama.toUpperCase() + ')' : ' — silakan lengkapi/cek Nama KTP'}.`;
+        } else {
+          statusEl.textContent = '⚠️ 16 digit NIK kurang jelas terbaca dari foto. Silakan foto ulang di tempat terang atau ketik NIK manual.';
+        }
+      } catch (err) {
+        statusEl.textContent = '⚠️ Gagal memproses foto KTP. Silakan ketik NIK secara manual.';
+      }
     }
 
     function renderPilihanBarangKasir() {
       const q = (document.getElementById('kasir-cari-barang').value || '').toLowerCase();
       const filtered = state.produk.filter(p => p.nama.toLowerCase().includes(q));
       document.getElementById('kasir-list-pilihan').innerHTML = filtered.map(p => `
-        <button type="button" onclick="tambahItemKasir(${p.id})" ${p.stok <= 0 ? 'disabled' : ''} class="text-left p-2 rounded-xl border transition ${p.stok > 0 ? 'bg-white hover:border-red-500 border-slate-200' : 'bg-slate-100 border-slate-200 opacity-50'}">
-          <p class="font-bold text-[11px] text-slate-800 line-clamp-1">${p.nama}</p>
+        <button type="button" onclick="tambahItemKasir(${p.id})" ${p.stok <= 0 ? 'disabled' : ''} class="text-left p-2 rounded-xl border transition ${p.stok > 0 ? (p.is_subsidi ? 'bg-purple-50/40 hover:border-purple-600 border-purple-200' : 'bg-white hover:border-red-500 border-slate-200') : 'bg-slate-100 border-slate-200 opacity-50'}">
+          <div class="flex items-center justify-between gap-1">
+            <p class="font-bold text-[11px] text-slate-800 line-clamp-1">${p.nama}</p>
+            ${p.is_subsidi ? `<span class="bg-purple-700 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded shrink-0">SUBSIDI</span>` : ''}
+          </div>
           <p class="text-[10px] text-red-600 font-extrabold">${rupiah(p.harga)}</p>
           <p class="text-[9px] text-slate-400">Stok: ${p.stok} • ${p.sumber_barang || 'Koperasi'}</p>
         </button>
@@ -1471,6 +1768,7 @@
           harga: Number(prod.harga),
           harga_modal: Number(prod.harga_modal || 0),
           sumber_barang: prod.sumber_barang || (prod.is_umkm ? 'UMKM Warga' : 'Modal Koperasi'),
+          is_subsidi: prod.is_subsidi === true,
           qty: 1
         });
       }
@@ -1490,22 +1788,50 @@
       renderStrukKasir();
     }
 
+    function hitungTransaksiKasir() {
+      const tipe = document.getElementById('kasir-tipe-pembeli').value;
+      const aturan = getAturanPoin();
+      const subtotal = state.kasirCart.reduce((s, i) => s + i.harga * i.qty, 0);
+      const memberObj = tipe === 'anggota' ? cariAnggotaByNomorAtauHp(document.getElementById('kasir-nomor-anggota').value) : null;
+
+      let poinDipakai = 0;
+      let diskonPoin = 0;
+      if (memberObj && aturan.aktif && document.getElementById('kasir-chk-pakai-poin').checked && aturan.nilaiRupiahPerPoin > 0) {
+        const maksPoinTagihan = Math.floor(subtotal / aturan.nilaiRupiahPerPoin);
+        poinDipakai = Math.min(Number(memberObj.poin || 0), maksPoinTagihan);
+        diskonPoin = poinDipakai * aturan.nilaiRupiahPerPoin;
+      }
+      const totalAkhir = Math.max(0, subtotal - diskonPoin);
+      const poinBaru = (memberObj && aturan.aktif) ? Math.floor(totalAkhir / aturan.belanjaPerPoin) : 0;
+      return { subtotal, memberObj, poinDipakai, diskonPoin, totalAkhir, poinBaru };
+    }
+
     function renderStrukKasir() {
       const box = document.getElementById('kasir-struk-items');
       const tipe = document.getElementById('kasir-tipe-pembeli').value;
+      const adaBarangSubsidi = state.kasirCart.some(i => i.is_subsidi === true);
+
+      document.getElementById('box-wajib-nik-subsidi').classList.toggle('hidden', !adaBarangSubsidi);
+
       if (!state.kasirCart.length) {
         box.innerHTML = 'Belum ada barang dipilih.';
         document.getElementById('kasir-total-rupiah').textContent = 'Rp 0';
         document.getElementById('kasir-estimasi-poin').textContent = '0 Poin';
+        document.getElementById('kasir-info-diskon-poin').classList.add('hidden');
         return;
       }
-      const total = state.kasirCart.reduce((s, i) => s + i.harga * i.qty, 0);
-      const poin = tipe === 'anggota' ? Math.floor(total / 5000) : 0;
+
+      const calc = hitungTransaksiKasir();
+      const aturan = getAturanPoin();
 
       box.innerHTML = state.kasirCart.map((item, idx) => `
         <div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg border">
           <div>
-            <p class="font-bold text-slate-800">${item.nama} <span class="text-[9px] text-blue-700">(${item.sumber_barang})</span></p>
+            <p class="font-bold text-slate-800">
+              ${item.nama}
+              ${item.is_subsidi ? '<span class="bg-purple-100 text-purple-800 text-[9px] px-1.5 py-0.5 rounded font-extrabold">SUBSIDI</span>' : ''}
+              <span class="text-[9px] text-blue-700">(${item.sumber_barang})</span>
+            </p>
             <p class="text-[10px] text-slate-500">${rupiah(item.harga)} x ${item.qty} = <strong>${rupiah(item.harga * item.qty)}</strong></p>
           </div>
           <div class="flex items-center gap-1.5">
@@ -1516,28 +1842,50 @@
         </div>
       `).join('');
 
-      document.getElementById('kasir-total-rupiah').textContent = rupiah(total);
-      document.getElementById('kasir-estimasi-poin').textContent = tipe === 'anggota' ? `+${poin} Poin` : '0 Poin (Umum)';
+      document.getElementById('kasir-total-rupiah').textContent = rupiah(calc.totalAkhir);
+      const infoDiskon = document.getElementById('kasir-info-diskon-poin');
+      if (calc.diskonPoin > 0) {
+        infoDiskon.classList.remove('hidden');
+        infoDiskon.textContent = `Hemat ${rupiah(calc.diskonPoin)} (Tukar ${calc.poinDipakai} poin)`;
+      } else {
+        infoDiskon.classList.add('hidden');
+      }
+
+      document.getElementById('kasir-estimasi-poin').textContent = !aturan.aktif
+        ? 'Poin Nonaktif'
+        : (tipe === 'anggota' ? `+${calc.poinBaru} Poin` : '0 Poin (Umum)');
     }
 
     async function prosesTransaksiPOS() {
       if (!state.kasirCart.length) return alert('Pilih minimal 1 barang yang dibeli!');
       const tipe = document.getElementById('kasir-tipe-pembeli').value;
+      const adaBarangSubsidi = state.kasirCart.some(i => i.is_subsidi === true);
+      const calc = hitungTransaksiKasir();
+
       let nomorAnggota = 'UMUM';
       let namaPembeli = (document.getElementById('kasir-nama-umum').value || '').trim() || 'Pembeli Umum';
-      let memberObj = null;
 
       if (tipe === 'anggota') {
-        const noInput = (document.getElementById('kasir-nomor-anggota').value || '').trim().toUpperCase();
-        memberObj = state.anggota.find(a => a.nomor_anggota.toUpperCase() === noInput);
-        if (!memberObj) return alert('Nomor Anggota tidak valid! Periksa kembali atau ganti ke Pembeli Umum.');
-        nomorAnggota = memberObj.nomor_anggota;
-        namaPembeli = memberObj.nama;
+        if (!calc.memberObj) return alert('Nomor Anggota / Nomor HP tidak valid! Periksa kembali atau ganti ke Pembeli Umum.');
+        nomorAnggota = calc.memberObj.nomor_anggota;
+        namaPembeli = calc.memberObj.nama;
+      }
+
+      let nikSubsidi = '';
+      let namaKtpSubsidi = '';
+      if (adaBarangSubsidi) {
+        nikSubsidi = (document.getElementById('kasir-nik-subsidi').value || '').replace(/\D/g, '');
+        namaKtpSubsidi = (document.getElementById('kasir-nama-ktp').value || '').trim();
+        if (nikSubsidi.length !== 16) {
+          return alert('Transaksi memuat BARANG SUBSIDI! Wajib mengisi atau scan foto KTP pembeli hingga 16 digit NIK terisi lengkap.');
+        }
+        if (!namaKtpSubsidi) {
+          return alert('Mohon isi Nama Pembeli sesuai KTP pada kotak Verifikasi Barang Subsidi.');
+        }
+        if (tipe === 'umum') namaPembeli = namaKtpSubsidi;
       }
 
       const itemsCopy = [...state.kasirCart];
-      const total = itemsCopy.reduce((s, i) => s + i.harga * i.qty, 0);
-      const poinBaru = tipe === 'anggota' ? Math.floor(total / 5000) : 0;
 
       for (const item of itemsCopy) {
         const prod = state.produk.find(p => p.id === item.id);
@@ -1547,23 +1895,32 @@
         }
       }
 
-      if (memberObj && poinBaru > 0) {
-        await db.from('anggota').update({ poin: Number(memberObj.poin) + poinBaru }).eq('id', memberObj.id);
+      if (calc.memberObj) {
+        const saldoAkhirPoin = Math.max(0, Number(calc.memberObj.poin || 0) - calc.poinDipakai + calc.poinBaru);
+        await db.from('anggota').update({ poin: saldoAkhirPoin }).eq('id', calc.memberObj.id);
       }
 
       const { error } = await db.from('pesanan').insert([{
         nomor_anggota: nomorAnggota,
         nama_anggota: namaPembeli,
+        nik_pembeli: nikSubsidi || (calc.memberObj?.nik || ''),
+        nama_ktp_subsidi: namaKtpSubsidi || namaPembeli,
         daftar_barang: itemsCopy,
-        total_harga: total,
+        total_harga: calc.totalAkhir,
+        poin_dipakai: calc.poinDipakai,
+        diskon_poin: calc.diskonPoin,
         metode_ambil: tipe === 'anggota' ? 'Kasir Gerai (Anggota)' : 'Kasir Gerai (Umum)',
         status: 'Selesai'
       }]);
 
       if (error) return alert('Gagal mencatat transaksi: ' + error.message);
 
-      alert(`Transaksi ${namaPembeli} (${rupiah(total)}) berhasil! Stok dipotong${poinBaru > 0 ? ` & +${poinBaru} poin ditambahkan` : ''}.`);
+      alert(`Transaksi ${namaPembeli} (${rupiah(calc.totalAkhir)}) berhasil!`);
       state.kasirCart = [];
+      document.getElementById('kasir-nik-subsidi').value = '';
+      document.getElementById('kasir-nama-ktp').value = '';
+      document.getElementById('kasir-chk-pakai-poin').checked = false;
+      document.getElementById('status-ocr-ktp').classList.add('hidden');
       renderStrukKasir();
       initApp();
     }
@@ -1571,7 +1928,7 @@
     async function selesaikanPesananOnline(pesananId) {
       const ps = state.pesanan.find(p => p.id === pesananId);
       if (!ps || ps.status === 'Selesai') return;
-      if (!confirm(`Selesaikan pesanan ${ps.nama_anggota} (${rupiah(ps.total_harga)})? Stok barang akan otomatis dipotong & poin anggota ditambahkan.`)) return;
+      if (!confirm(`Selesaikan pesanan ${ps.nama_anggota} (${rupiah(ps.total_harga)})? Stok barang akan otomatis dipotong.`)) return;
 
       for (const item of (ps.daftar_barang || [])) {
         const prod = state.produk.find(p => p.id === item.id);
@@ -1581,15 +1938,21 @@
         }
       }
 
+      const aturan = getAturanPoin();
       const member = state.anggota.find(a => a.nomor_anggota === ps.nomor_anggota);
-      const poinBaru = Math.floor((Number(ps.total_harga) - Number(ps.ongkir || 0)) / 5000);
+      const nominalDasarPoin = Math.max(0, Number(ps.total_harga) - Number(ps.ongkir || 0));
+      const poinBaru = (member && aturan.aktif) ? Math.floor(nominalDasarPoin / aturan.belanjaPerPoin) : 0;
       if (member && poinBaru > 0) {
         await db.from('anggota').update({ poin: Number(member.poin) + poinBaru }).eq('id', member.id);
       }
 
-      await db.from('pesanan').update({ status: 'Selesai' }).eq('id', ps.id);
+      await db.from('pesanan').update({
+        status: 'Selesai',
+        nik_pembeli: ps.nik_pembeli || (member?.nik || ''),
+        nama_ktp_subsidi: ps.nama_ktp_subsidi || ps.nama_anggota
+      }).eq('id', ps.id);
 
-      alert(`Pesanan selesai! Stok dipotong & +${poinBaru} poin ditambahkan ke ${ps.nama_anggota}.`);
+      alert(`Pesanan selesai! Stok dipotong${poinBaru > 0 ? ` & +${poinBaru} poin ditambahkan` : ''}.`);
       initApp();
     }
 
@@ -1603,6 +1966,7 @@
             <span class="text-red-600">${rupiah(ps.total_harga)}</span>
           </div>
           <p class="text-[11px] text-slate-600">${ps.metode_ambil} ${ps.jadwal_atau_alamat ? '• ' + ps.jadwal_atau_alamat : ''}</p>
+          ${Number(ps.diskon_poin || 0) > 0 ? `<p class="text-[10px] text-emerald-700 font-bold">Diskon Poin: -${rupiah(ps.diskon_poin)} (${ps.poin_dipakai} poin)</p>` : ''}
           <p class="text-[11px] text-slate-500">${(ps.daftar_barang || []).map(b => `${b.nama} (${b.qty}x)`).join(', ')}</p>
           <div class="pt-1 flex justify-between items-center">
             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${ps.status === 'Selesai' ? 'bg-emerald-600 text-white' : 'bg-amber-200 text-amber-900'}">${ps.status}</span>
@@ -1667,7 +2031,11 @@
 
         return `
           <tr>
-            <td class="p-2.5 font-bold">${p.nama}<br><span class="text-[10px] font-normal text-blue-700">${p.sumber_barang || 'Modal Koperasi'}</span> • <span class="text-[10px] font-normal text-slate-500">${rupiah(p.harga)}</span></td>
+            <td class="p-2.5 font-bold">
+              ${p.nama}
+              ${p.is_subsidi ? '<span class="bg-purple-100 text-purple-800 text-[9px] px-1.5 py-0.5 rounded font-extrabold">SUBSIDI</span>' : ''}
+              <br><span class="text-[10px] font-normal text-blue-700">${p.sumber_barang || 'Modal Koperasi'}</span> • <span class="text-[10px] font-normal text-slate-500">${rupiah(p.harga)}</span>
+            </td>
             <td class="p-2.5 text-center font-semibold text-slate-600">${terjualMap[p.id] || 0}</td>
             <td class="p-2.5 text-center font-extrabold text-slate-800">${stokSistem}</td>
             <td class="p-2.5 text-center bg-blue-50/60">
@@ -1718,6 +2086,7 @@
         detail.push({
           nama: p.nama,
           sumber_barang: p.sumber_barang || 'Modal Koperasi',
+          is_subsidi: p.is_subsidi === true,
           stok_sistem_lama: p.stok,
           fisik_gudang: inp.gudang,
           fisik_display: inp.display,
@@ -1752,7 +2121,7 @@
         return `
           <tr>
             <td style="border: 1px solid #94a3b8; padding: 6px; text-align: center;">${i + 1}</td>
-            <td style="border: 1px solid #94a3b8; padding: 6px; font-weight: bold;">${p.nama} (${p.sumber_barang || 'Koperasi'})</td>
+            <td style="border: 1px solid #94a3b8; padding: 6px; font-weight: bold;">${p.nama} [${p.is_subsidi ? 'SUBSIDI' : 'NON-SUBSIDI'}]</td>
             <td style="border: 1px solid #94a3b8; padding: 6px; text-align: center;">${terjualMap[p.id] || 0}</td>
             <td style="border: 1px solid #94a3b8; padding: 6px; text-align: center;">${p.stok}</td>
             <td style="border: 1px solid #94a3b8; padding: 6px; text-align: center;">${inp.gudang}</td>
@@ -1771,7 +2140,7 @@
             <thead>
               <tr style="background: #f1f5f9;">
                 <th style="border: 1px solid #94a3b8; padding: 6px;">No</th>
-                <th style="border: 1px solid #94a3b8; padding: 6px; text-align: left;">Nama & Sumber Barang</th>
+                <th style="border: 1px solid #94a3b8; padding: 6px; text-align: left;">Nama & Status Barang</th>
                 <th style="border: 1px solid #94a3b8; padding: 6px;">Terjual</th>
                 <th style="border: 1px solid #94a3b8; padding: 6px;">Stok Sistem</th>
                 <th style="border: 1px solid #94a3b8; padding: 6px;">Gudang</th>
@@ -1790,7 +2159,7 @@
       `);
     }
 
-    // ==================== LAPORAN KEUANGAN PERIODIK (BULANAN, TRIWULAN, SEMESTER, TAHUNAN) ====================
+    // ==================== LAPORAN KEUANGAN PERIODIK & LOG SUBSIDI ====================
     function cekDalamPeriode(dateStr) {
       if (!dateStr) return false;
       const y = Number(dateStr.slice(0, 4));
@@ -1826,14 +2195,24 @@
         'UMKM Warga': { omzet: 0, hpp: 0 }
       };
 
+      const subsidiMap = {
+        'Barang Subsidi': { omzet: 0, hpp: 0 },
+        'Barang Non-Subsidi': { omzet: 0, hpp: 0 }
+      };
+
+      const logSubsidi = [];
       let totalOmzet = 0;
       let totalHpp = 0;
 
       trxPeriode.forEach(ps => {
         totalOmzet += Number(ps.total_harga || 0);
+        const itemSubsidiDiTrx = [];
+        let nominalSubsidiTrx = 0;
+
         (ps.daftar_barang || []).forEach(b => {
           const prodMaster = state.produk.find(pr => pr.id === b.id);
           const sumber = b.sumber_barang || prodMaster?.sumber_barang || (prodMaster?.is_umkm ? 'UMKM Warga' : 'Modal Koperasi');
+          const isSub = b.is_subsidi !== undefined ? (b.is_subsidi === true) : (prodMaster?.is_subsidi === true);
           const modalSatuan = b.harga_modal !== undefined ? Number(b.harga_modal) : Number(prodMaster?.harga_modal || 0);
           const qty = Number(b.qty || 0);
           const omzetItem = Number(b.harga || 0) * qty;
@@ -1842,15 +2221,35 @@
           if (!sumberMap[sumber]) sumberMap[sumber] = { omzet: 0, hpp: 0 };
           sumberMap[sumber].omzet += omzetItem;
           sumberMap[sumber].hpp += hppItem;
+
+          const keySub = isSub ? 'Barang Subsidi' : 'Barang Non-Subsidi';
+          subsidiMap[keySub].omzet += omzetItem;
+          subsidiMap[keySub].hpp += hppItem;
+
+          if (isSub) {
+            itemSubsidiDiTrx.push(`${b.nama} (${qty}x)`);
+            nominalSubsidiTrx += omzetItem;
+          }
+
           totalHpp += hppItem;
         });
+
+        if (itemSubsidiDiTrx.length > 0) {
+          logSubsidi.push({
+            tanggal: (ps.created_at || '').slice(0, 10),
+            nik: ps.nik_pembeli || '-',
+            nama: ps.nama_ktp_subsidi || ps.nama_anggota,
+            barang: itemSubsidiDiTrx.join(', '),
+            nominal: nominalSubsidiTrx
+          });
+        }
       });
 
       const totalBiaya = expPeriode.reduce((s, e) => s + Number(e.jumlah || 0), 0);
       const labaKotor = totalOmzet - totalHpp;
       const labaBersih = labaKotor - totalBiaya;
 
-      return { trxPeriode, expPeriode, sumberMap, totalOmzet, totalHpp, labaKotor, totalBiaya, labaBersih };
+      return { trxPeriode, expPeriode, sumberMap, subsidiMap, logSubsidi, totalOmzet, totalHpp, labaKotor, totalBiaya, labaBersih };
     }
 
     function renderLaporanOwner() {
@@ -1864,17 +2263,33 @@
       document.getElementById('fin-biaya').textContent = rupiah(data.totalBiaya);
       document.getElementById('fin-laba-bersih').textContent = rupiah(data.labaBersih);
 
-      document.getElementById('tabel-ringkasan-sumber').innerHTML = Object.entries(data.sumberMap).map(([sumber, val]) => {
-        const margin = val.omzet - val.hpp;
-        return `
-          <tr>
-            <td class="p-2.5 font-bold ${sumber === 'Pasokan Agrinas' ? 'text-blue-700' : (sumber === 'UMKM Warga' ? 'text-amber-700' : 'text-slate-800')}">${sumber}</td>
-            <td class="p-2.5 text-right font-semibold">${rupiah(val.omzet)}</td>
-            <td class="p-2.5 text-right font-bold text-rose-700">${rupiah(val.hpp)}</td>
-            <td class="p-2.5 text-right font-extrabold text-emerald-700">${rupiah(margin)}</td>
-          </tr>
-        `;
-      }).join('');
+      document.getElementById('tabel-ringkasan-sumber').innerHTML = Object.entries(data.sumberMap).map(([sumber, val]) => `
+        <tr>
+          <td class="p-2.5 font-bold ${sumber === 'Pasokan Agrinas' ? 'text-blue-700' : (sumber === 'UMKM Warga' ? 'text-amber-700' : 'text-slate-800')}">${sumber}</td>
+          <td class="p-2.5 text-right font-semibold">${rupiah(val.omzet)}</td>
+          <td class="p-2.5 text-right font-bold text-rose-700">${rupiah(val.hpp)}</td>
+          <td class="p-2.5 text-right font-extrabold text-emerald-700">${rupiah(val.omzet - val.hpp)}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('tabel-ringkasan-subsidi').innerHTML = Object.entries(data.subsidiMap).map(([kel, val]) => `
+        <tr>
+          <td class="p-2.5 font-bold ${kel === 'Barang Subsidi' ? 'text-purple-800' : 'text-slate-800'}">${kel}</td>
+          <td class="p-2.5 text-right font-semibold">${rupiah(val.omzet)}</td>
+          <td class="p-2.5 text-right font-bold text-rose-700">${rupiah(val.hpp)}</td>
+          <td class="p-2.5 text-right font-extrabold text-emerald-700">${rupiah(val.omzet - val.hpp)}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('tabel-log-subsidi').innerHTML = data.logSubsidi.length ? data.logSubsidi.map(l => `
+        <tr>
+          <td class="p-2.5">${l.tanggal}</td>
+          <td class="p-2.5 font-mono font-extrabold text-purple-900">${l.nik}</td>
+          <td class="p-2.5 font-bold">${l.nama}</td>
+          <td class="p-2.5">${l.barang}</td>
+          <td class="p-2.5 text-right font-bold text-purple-800">${rupiah(l.nominal)}</td>
+        </tr>
+      `).join('') : '<tr><td colspan="5" class="p-4 text-center text-slate-400">Belum ada transaksi barang subsidi pada periode ini.</td></tr>';
 
       document.getElementById('tabel-pengeluaran-owner').innerHTML = data.expPeriode.length ? data.expPeriode.map(e => `
         <tr>
@@ -1888,7 +2303,7 @@
       document.getElementById('tabel-laporan-owner').innerHTML = data.trxPeriode.length ? data.trxPeriode.map(p => `
         <tr>
           <td class="p-2.5">${(p.created_at || '').slice(0, 10)}</td>
-          <td class="p-2.5 font-bold">${p.nama_anggota}<br><span class="text-[10px] font-mono text-slate-500">${p.nomor_anggota}</span></td>
+          <td class="p-2.5 font-bold">${p.nama_anggota}<br><span class="text-[10px] font-mono text-slate-500">${p.nik_pembeli ? 'NIK: ' + p.nik_pembeli : p.nomor_anggota}</span></td>
           <td class="p-2.5">${(p.daftar_barang || []).map(b => `${b.nama} (${b.qty}x)`).join(', ')}</td>
           <td class="p-2.5 text-right font-bold text-red-600">${rupiah(p.total_harga)}</td>
           <td class="p-2.5 font-bold text-emerald-600">${p.status}</td>
@@ -1929,35 +2344,39 @@
         </tr>
       `).join('');
 
+      const subsidiRows = Object.entries(data.subsidiMap).map(([kel, val]) => `
+        <tr>
+          <td style="border: 1px solid #94a3b8; padding: 7px; font-weight: bold;">${kel}</td>
+          <td style="border: 1px solid #94a3b8; padding: 7px; text-align: right;">${rupiah(val.omzet)}</td>
+          <td style="border: 1px solid #94a3b8; padding: 7px; text-align: right;">${rupiah(val.hpp)}</td>
+          <td style="border: 1px solid #94a3b8; padding: 7px; text-align: right; font-weight: bold;">${rupiah(val.omzet - val.hpp)}</td>
+        </tr>
+      `).join('');
+
       jalankanPrintAman(`
         <div style="padding: 24px; font-family: Arial, sans-serif; color: #1e293b;">
           <div style="border-bottom: 3px solid #b91c1c; padding-bottom: 10px; margin-bottom: 16px;">
             <h2 style="margin: 0; font-size: 18px; font-weight: 800; color: #b91c1c;">LAPORAN PERHITUNGAN HASIL USAHA (PHU) — KDMP KARANGCEGAK</h2>
             <p style="margin: 4px 0 0 0; font-size: 12px; color: #475569;">Periode: <strong>${labelPeriode}</strong> • Dicetak: ${tglCetak}</p>
           </div>
-
           <h3 style="font-size: 13px; margin-bottom: 6px;">A. Ikhtisar Laba / Rugi (Sisa Hasil Usaha)</h3>
-          <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 18px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px;">
             <tr><td style="border: 1px solid #94a3b8; padding: 7px;">1. Total Omzet Penjualan Gerai</td><td style="border: 1px solid #94a3b8; padding: 7px; text-align: right; font-weight: bold;">${rupiah(data.totalOmzet)}</td></tr>
             <tr><td style="border: 1px solid #94a3b8; padding: 7px;">2. Total Harga Pokok Penjualan / Setoran Pemasok (HPP)</td><td style="border: 1px solid #94a3b8; padding: 7px; text-align: right;">(${rupiah(data.totalHpp)})</td></tr>
             <tr style="background: #f8fafc;"><td style="border: 1px solid #94a3b8; padding: 7px; font-weight: bold;">3. Laba Kotor (Margin Perdagangan)</td><td style="border: 1px solid #94a3b8; padding: 7px; text-align: right; font-weight: bold;">${rupiah(data.labaKotor)}</td></tr>
             <tr><td style="border: 1px solid #94a3b8; padding: 7px;">4. Total Biaya Operasional Gerai</td><td style="border: 1px solid #94a3b8; padding: 7px; text-align: right;">(${rupiah(data.totalBiaya)})</td></tr>
             <tr style="background: #ecfdf5;"><td style="border: 1px solid #94a3b8; padding: 8px; font-weight: 800; color: #065f46;">5. LABA BERSIH / SISA HASIL USAHA (SHU)</td><td style="border: 1px solid #94a3b8; padding: 8px; text-align: right; font-weight: 800; color: #065f46;">${rupiah(data.labaBersih)}</td></tr>
           </table>
-
-          <h3 style="font-size: 13px; margin-bottom: 6px;">B. Pemisahan Arus Barang & Kewajiban Setoran (Agrinas / Koperasi / UMKM)</h3>
-          <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 24px;">
-            <thead>
-              <tr style="background: #f1f5f9;">
-                <th style="border: 1px solid #94a3b8; padding: 7px; text-align: left;">Sumber Pasokan</th>
-                <th style="border: 1px solid #94a3b8; padding: 7px; text-align: right;">Omzet Terjual</th>
-                <th style="border: 1px solid #94a3b8; padding: 7px; text-align: right;">HPP / Wajib Setor</th>
-                <th style="border: 1px solid #94a3b8; padding: 7px; text-align: right;">Margin Koperasi</th>
-              </tr>
-            </thead>
+          <h3 style="font-size: 13px; margin-bottom: 6px;">B. Pemisahan Arus Barang Berdasarkan Sumber Pasokan</h3>
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px;">
+            <thead><tr style="background: #f1f5f9;"><th style="border: 1px solid #94a3b8; padding: 7px; text-align: left;">Sumber Pasokan</th><th style="border: 1px solid #94a3b8; padding: 7px; text-align: right;">Omzet Terjual</th><th style="border: 1px solid #94a3b8; padding: 7px; text-align: right;">HPP / Wajib Setor</th><th style="border: 1px solid #94a3b8; padding: 7px; text-align: right;">Margin Koperasi</th></tr></thead>
             <tbody>${sumberRows}</tbody>
           </table>
-
+          <h3 style="font-size: 13px; margin-bottom: 6px;">C. Pemisahan Barang Subsidi vs Non-Subsidi</h3>
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 24px;">
+            <thead><tr style="background: #f3e8ff;"><th style="border: 1px solid #94a3b8; padding: 7px; text-align: left;">Kelompok Barang</th><th style="border: 1px solid #94a3b8; padding: 7px; text-align: right;">Omzet Terjual</th><th style="border: 1px solid #94a3b8; padding: 7px; text-align: right;">HPP / Nilai Tebus</th><th style="border: 1px solid #94a3b8; padding: 7px; text-align: right;">Margin Koperasi</th></tr></thead>
+            <tbody>${subsidiRows}</tbody>
+          </table>
           <div style="margin-top: 28px; display: flex; justify-content: space-between; font-size: 11px;">
             <div>Bendahara KDMP Karangcegak,<br><br><br><strong>(____________________)</strong></div>
             <div>Ketua KDMP Karangcegak,<br><br><br><strong>(____________________)</strong></div>
@@ -1966,11 +2385,40 @@
       `);
     }
 
+    function cetakLogSubsidiPDF() {
+      const data = hitungDataKeuanganPeriode();
+      const labelPeriode = getLabelPeriodeAktif();
+      const tglCetak = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+      const rows = data.logSubsidi.map((l, idx) => `
+        <tr>
+          <td style="border: 1px solid #94a3b8; padding: 6px; text-align: center;">${idx + 1}</td>
+          <td style="border: 1px solid #94a3b8; padding: 6px;">${l.tanggal}</td>
+          <td style="border: 1px solid #94a3b8; padding: 6px; font-family: monospace; font-weight: bold;">${l.nik}</td>
+          <td style="border: 1px solid #94a3b8; padding: 6px; font-weight: bold;">${l.nama}</td>
+          <td style="border: 1px solid #94a3b8; padding: 6px;">${l.barang}</td>
+          <td style="border: 1px solid #94a3b8; padding: 6px; text-align: right;">${rupiah(l.nominal)}</td>
+        </tr>
+      `).join('');
+
+      jalankanPrintAman(`
+        <div style="padding: 24px; font-family: Arial, sans-serif; color: #1e293b;">
+          <div style="border-bottom: 3px solid #6b21a8; padding-bottom: 10px; margin-bottom: 16px;">
+            <h2 style="margin: 0; font-size: 17px; font-weight: 800; color: #6b21a8;">LOG PENYALURAN BARANG SUBSIDI (BERBASIS NIK) — KDMP KARANGCEGAK</h2>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #475569;">Periode: <strong>${labelPeriode}</strong> • Dicetak: ${tglCetak}</p>
+          </div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+            <thead><tr style="background: #f3e8ff;"><th style="border: 1px solid #94a3b8; padding: 6px;">No</th><th style="border: 1px solid #94a3b8; padding: 6px; text-align: left;">Tanggal</th><th style="border: 1px solid #94a3b8; padding: 6px; text-align: left;">NIK Penerima (16 Digit)</th><th style="border: 1px solid #94a3b8; padding: 6px; text-align: left;">Nama Sesuai KTP</th><th style="border: 1px solid #94a3b8; padding: 6px; text-align: left;">Barang Subsidi</th><th style="border: 1px solid #94a3b8; padding: 6px; text-align: right;">Nominal</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="6" style="border: 1px solid #94a3b8; padding: 12px; text-align: center;">Belum ada data penyaluran barang subsidi pada periode ini.</td></tr>'}</tbody>
+          </table>
+        </div>
+      `);
+    }
+
     function exportLaporanCSV() {
       const data = hitungDataKeuanganPeriode();
       const labelPeriode = getLabelPeriodeAktif();
       const rows = [
-        [`LAPORAN KEUANGAN KDMP KARANGCEGAK - ${labelPeriode}`],
+        [`LAPORAN KEUANGAN & SUBSIDI KDMP KARANGCEGAK - ${labelPeriode}`],
         ['Total Omzet', data.totalOmzet],
         ['Total HPP / Setoran Pemasok', data.totalHpp],
         ['Laba Kotor', data.labaKotor],
@@ -1979,24 +2427,22 @@
         [],
         ['RINGKASAN PER SUMBER BARANG', 'Omzet Terjual', 'HPP / Wajib Setor', 'Margin Koperasi']
       ];
-      Object.entries(data.sumberMap).forEach(([sumber, val]) => {
-        rows.push([sumber, val.omzet, val.hpp, val.omzet - val.hpp]);
-      });
-      rows.push([], ['RINCIAN TRANSAKSI', 'Kode Pembeli', 'Nama Pembeli', 'Jenis', 'Total Harga']);
-      data.trxPeriode.forEach(p => {
-        rows.push([(p.created_at || '').slice(0, 10), p.nomor_anggota, `"${p.nama_anggota}"`, `"${p.metode_ambil}"`, p.total_harga]);
-      });
+      Object.entries(data.sumberMap).forEach(([sumber, val]) => rows.push([sumber, val.omzet, val.hpp, val.omzet - val.hpp]));
+      rows.push([], ['RINGKASAN SUBSIDI VS NON-SUBSIDI', 'Omzet Terjual', 'HPP', 'Margin Koperasi']);
+      Object.entries(data.subsidiMap).forEach(([kel, val]) => rows.push([kel, val.omzet, val.hpp, val.omzet - val.hpp]));
+      rows.push([], ['LOG PENERIMA BARANG SUBSIDI', 'NIK Penerima', 'Nama KTP', 'Barang Subsidi', 'Nominal']);
+      data.logSubsidi.forEach(l => rows.push([l.tanggal, `'${l.nik}`, `"${l.nama}"`, `"${l.barang}"`, l.nominal]));
 
       const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(e => e.join(',')).join('\n');
       const link = document.createElement('a');
       link.setAttribute('href', encodeURI(csvContent));
-      link.setAttribute('download', `Laporan_Keuangan_KDMP_${labelPeriode.replace(/\s+/g, '_')}.csv`);
+      link.setAttribute('download', `Laporan_Keuangan_Subsidi_KDMP_${labelPeriode.replace(/\s+/g, '_')}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     }
 
-    // ==================== KELOLA BARANG, AGRINAS & UMKM ====================
+    // ==================== KELOLA BARANG, HADIAH POIN & PROFIL ====================
     function toggleFormSumberUmkm() {
       const s = document.getElementById('p-sumber').value;
       document.getElementById('box-p-pemilik-umkm').classList.toggle('hidden', s !== 'UMKM Warga');
@@ -2024,9 +2470,11 @@
         if (file) fotoUrl = await uploadFotoStorage(file);
         const sumber = document.getElementById('p-sumber').value;
         const isUmkm = sumber === 'UMKM Warga';
+        const isSubsidi = document.getElementById('p-subsidi').value === 'true';
         const { error } = await db.from('produk').insert([{
           nama: document.getElementById('p-nama').value.trim(),
           sumber_barang: sumber,
+          is_subsidi: isSubsidi,
           kategori: document.getElementById('p-kategori').value.trim(),
           harga_modal: Number(document.getElementById('p-modal').value),
           harga: Number(document.getElementById('p-harga').value),
@@ -2053,6 +2501,7 @@
       document.getElementById('edit-p-id').value = item.id;
       document.getElementById('edit-p-nama').value = item.nama;
       document.getElementById('edit-p-sumber').value = sumber;
+      document.getElementById('edit-p-subsidi').value = item.is_subsidi ? 'true' : 'false';
       document.getElementById('edit-p-kategori').value = item.kategori;
       document.getElementById('edit-p-modal').value = item.harga_modal || 0;
       document.getElementById('edit-p-harga').value = item.harga;
@@ -2078,9 +2527,11 @@
       const file = document.getElementById('edit-p-foto').files[0];
       const sumber = document.getElementById('edit-p-sumber').value;
       const isUmkm = sumber === 'UMKM Warga';
+      const isSubsidi = document.getElementById('edit-p-subsidi').value === 'true';
       const payload = {
         nama: document.getElementById('edit-p-nama').value.trim(),
         sumber_barang: sumber,
+        is_subsidi: isSubsidi,
         kategori: document.getElementById('edit-p-kategori').value.trim(),
         harga_modal: Number(document.getElementById('edit-p-modal').value),
         harga: Number(document.getElementById('edit-p-harga').value),
@@ -2119,7 +2570,9 @@
     function renderTabelProdukOwner() {
       const q = (document.getElementById('search-produk-owner').value || '').toLowerCase();
       const filtered = state.produk.filter(item =>
-        item.nama.toLowerCase().includes(q) || (item.sumber_barang || '').toLowerCase().includes(q)
+        item.nama.toLowerCase().includes(q) ||
+        (item.sumber_barang || '').toLowerCase().includes(q) ||
+        (q === 'subsidi' && item.is_subsidi)
       );
       document.getElementById('tabel-produk-owner').innerHTML = filtered.length ? filtered.map(item => {
         const sumber = item.sumber_barang || (item.is_umkm ? 'UMKM Warga' : 'Modal Koperasi');
@@ -2128,18 +2581,16 @@
           : (sumber === 'UMKM Warga' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700');
         return `
         <tr>
-          <td class="p-2.5">
-            ${item.foto_url ? `<img src="${item.foto_url}" class="w-12 h-12 rounded-lg object-cover border" />` : '<span class="text-slate-400">No Foto</span>'}
-          </td>
+          <td class="p-2.5">${item.foto_url ? `<img src="${item.foto_url}" class="w-12 h-12 rounded-lg object-cover border" />` : '<span class="text-slate-400">No Foto</span>'}</td>
           <td class="p-2.5 font-bold">
-            ${item.nama} <span class="${badgeColor} text-[9px] px-1.5 py-0.5 rounded font-extrabold">${sumber}</span>
+            ${item.nama}
+            ${item.is_subsidi ? '<span class="bg-purple-700 text-white text-[9px] px-1.5 py-0.5 rounded font-extrabold">SUBSIDI</span>' : '<span class="bg-slate-200 text-slate-700 text-[9px] px-1.5 py-0.5 rounded font-bold">Non-Subsidi</span>'}
+            <span class="${badgeColor} text-[9px] px-1.5 py-0.5 rounded font-extrabold">${sumber}</span>
             <br><span class="text-[10px] font-normal text-slate-500">${item.kategori} • Satuan: <strong>${item.satuan}</strong> ${item.pemilik_umkm ? '• Pemilik: ' + item.pemilik_umkm : ''}</span>
           </td>
           <td class="p-2.5 text-slate-600">${rupiah(item.harga_modal || 0)}</td>
           <td class="p-2.5 font-semibold text-red-600">${rupiah(item.harga)}</td>
-          <td class="p-2.5">
-            <input type="number" value="${item.stok}" onchange="ubahStokProduk(${item.id}, this.value)" class="border rounded px-2 py-1 w-16" />
-          </td>
+          <td class="p-2.5"><input type="number" value="${item.stok}" onchange="ubahStokProduk(${item.id}, this.value)" class="border rounded px-2 py-1 w-16" /></td>
           <td class="p-2.5 space-x-1 no-print whitespace-nowrap">
             <button onclick="bukaModalEditProduk(${item.id})" class="bg-blue-100 hover:bg-blue-200 text-blue-800 px-2.5 py-1.5 rounded-lg font-bold">Edit</button>
             <button onclick="hapusProduk(${item.id})" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-2.5 py-1.5 rounded-lg font-bold">Hapus</button>
@@ -2152,56 +2603,31 @@
       const area = document.getElementById('print-area');
       area.innerHTML = htmlKonten;
       area.style.display = 'block';
-
       const bersihkanSetelahPrint = () => {
         area.style.display = 'none';
         window.removeEventListener('afterprint', bersihkanSetelahPrint);
       };
       window.addEventListener('afterprint', bersihkanSetelahPrint);
-
-      setTimeout(() => {
-        window.print();
-      }, 250);
+      setTimeout(() => { window.print(); }, 250);
     }
 
     function cetakDaftarHarga() {
       const tersedia = state.produk.filter(p => Number(p.stok) > 0);
-      if (!tersedia.length) {
-        return alert('Belum ada barang dengan stok tersedia (> 0) untuk dicetak.');
-      }
+      if (!tersedia.length) return alert('Belum ada barang dengan stok tersedia (> 0) untuk dicetak.');
       const tglCetak = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-      const html = `
+      jalankanPrintAman(`
         <div style="padding: 24px; font-family: Arial, sans-serif; color: #1e293b;">
           <div style="border-bottom: 3px solid #b91c1c; padding-bottom: 10px; margin-bottom: 16px;">
             <h2 style="margin: 0; font-size: 20px; font-weight: 800; color: #b91c1c;">DAFTAR HARGA BARANG TERSEDIA — KDMP KARANGCEGAK</h2>
             <p style="margin: 4px 0 0 0; font-size: 12px; color: #475569;">${state.profil.alamat || 'Desa Karangcegak, Kec. Sumbang, Kab. Banyumas'} • Dicetak: ${tglCetak}</p>
           </div>
           <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-            <thead>
-              <tr style="background-color: #f1f5f9;">
-                <th style="border: 1px solid #94a3b8; padding: 8px; text-align: center; width: 40px;">No</th>
-                <th style="border: 1px solid #94a3b8; padding: 8px; text-align: left;">Nama Barang</th>
-                <th style="border: 1px solid #94a3b8; padding: 8px; text-align: center;">Kategori</th>
-                <th style="border: 1px solid #94a3b8; padding: 8px; text-align: center;">Satuan</th>
-                <th style="border: 1px solid #94a3b8; padding: 8px; text-align: right;">Harga</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${tersedia.map((p, i) => `
-                <tr>
-                  <td style="border: 1px solid #94a3b8; padding: 7px; text-align: center;">${i + 1}</td>
-                  <td style="border: 1px solid #94a3b8; padding: 7px; font-weight: bold;">${p.nama}</td>
-                  <td style="border: 1px solid #94a3b8; padding: 7px; text-align: center;">${p.kategori || '-'}</td>
-                  <td style="border: 1px solid #94a3b8; padding: 7px; text-align: center;">${p.satuan}</td>
-                  <td style="border: 1px solid #94a3b8; padding: 7px; text-align: right; font-weight: bold;">${rupiah(p.harga)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
+            <thead><tr style="background-color: #f1f5f9;"><th style="border: 1px solid #94a3b8; padding: 8px; text-align: center; width: 40px;">No</th><th style="border: 1px solid #94a3b8; padding: 8px; text-align: left;">Nama Barang</th><th style="border: 1px solid #94a3b8; padding: 8px; text-align: center;">Jenis</th><th style="border: 1px solid #94a3b8; padding: 8px; text-align: center;">Satuan</th><th style="border: 1px solid #94a3b8; padding: 8px; text-align: right;">Harga</th></tr></thead>
+            <tbody>${tersedia.map((p, i) => `<tr><td style="border: 1px solid #94a3b8; padding: 7px; text-align: center;">${i + 1}</td><td style="border: 1px solid #94a3b8; padding: 7px; font-weight: bold;">${p.nama}</td><td style="border: 1px solid #94a3b8; padding: 7px; text-align: center;">${p.is_subsidi ? 'Subsidi (Wajib KTP)' : 'Non-Subsidi'}</td><td style="border: 1px solid #94a3b8; padding: 7px; text-align: center;">${p.satuan}</td><td style="border: 1px solid #94a3b8; padding: 7px; text-align: right; font-weight: bold;">${rupiah(p.harga)}</td></tr>`).join('')}</tbody>
           </table>
-          <p style="margin-top: 14px; font-size: 11px; color: #64748b;">Total barang tersedia: ${tersedia.length} item. Harga dapat berubah sewaktu-waktu mengikuti stok gerai.</p>
+          <p style="margin-top: 14px; font-size: 11px; color: #64748b;">Total barang tersedia: ${tersedia.length} item. Pembelian barang subsidi wajib menunjukkan KTP asli.</p>
         </div>
-      `;
-      jalankanPrintAman(html);
+      `);
     }
 
     // ==================== VERIFIKASI CALON ANGGOTA & KARTU ====================
@@ -2273,17 +2699,15 @@
     function renderTabelAnggotaOwner() {
       const q = (document.getElementById('search-anggota-owner').value || '').toLowerCase();
       const filtered = state.anggota.filter(a =>
-        a.nama.toLowerCase().includes(q) || a.nomor_anggota.toLowerCase().includes(q) || (a.nik || '').includes(q)
+        a.nama.toLowerCase().includes(q) || a.nomor_anggota.toLowerCase().includes(q) || (a.nik || '').includes(q) || (a.no_hp || '').includes(q)
       );
       document.getElementById('tabel-anggota-owner').innerHTML = filtered.map(a => `
         <tr>
           <td class="p-2.5 font-extrabold text-red-700 font-mono">${a.nomor_anggota}</td>
-          <td class="p-2.5 font-bold">${a.nama}<br><span class="text-[10px] font-normal text-slate-500">NIK: ${a.nik}</span></td>
+          <td class="p-2.5 font-bold">${a.nama}<br><span class="text-[10px] font-normal text-slate-500">NIK: ${a.nik} • HP: ${a.no_hp || '-'}</span></td>
           <td class="p-2.5">${a.tempat_lahir || '-'}, ${a.tanggal_lahir || '-'}</td>
           <td class="p-2.5 font-bold text-amber-600">${a.poin}</td>
-          <td class="p-2.5">
-            <button onclick="bukaStudioKartu(${a.id})" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1.5 rounded-lg">Desain & Cetak Kartu</button>
-          </td>
+          <td class="p-2.5"><button onclick="bukaStudioKartu(${a.id})" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1.5 rounded-lg">Desain & Cetak Kartu</button></td>
         </tr>
       `).join('');
     }
@@ -2306,7 +2730,47 @@
       jalankanPrintAman(`<div style="padding: 20px; display: flex; flex-wrap: wrap; justify-content: center; gap: 20px;">${kontenKartu}</div>`);
     }
 
-    // ==================== SCAN QR & PROFIL ====================
+    // ==================== KELOLA HADIAH POIN & PENGATURAN PROFIL/ONGKIR ====================
+    function renderHadiahOwner() {
+      const box = document.getElementById('list-hadiah-owner');
+      box.innerHTML = state.hadiahPoin.length ? state.hadiahPoin.map(h => `
+        <div class="flex justify-between items-center p-2.5 rounded-xl border bg-slate-50">
+          <div>
+            <p class="font-bold text-slate-800">${h.nama_hadiah}</p>
+            <p class="text-[10px] text-amber-700 font-bold">${h.poin_dibutuhkan} Poin • Stok: ${h.stok}</p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <input type="number" min="0" value="${h.stok}" onchange="ubahStokHadiah(${h.id}, this.value)" class="border rounded px-1.5 py-1 w-14 text-center" />
+            <button onclick="hapusHadiahPoin(${h.id})" class="bg-rose-100 text-rose-700 font-bold px-2 py-1 rounded">Hapus</button>
+          </div>
+        </div>
+      `).join('') : '<p class="text-slate-400">Belum ada hadiah poin ditambahkan.</p>';
+    }
+
+    async function tambahHadiahPoin(e) {
+      e.preventDefault();
+      const { error } = await db.from('hadiah_poin').insert([{
+        nama_hadiah: document.getElementById('h-nama').value.trim(),
+        poin_dibutuhkan: Number(document.getElementById('h-poin').value),
+        stok: Number(document.getElementById('h-stok').value)
+      }]);
+      if (error) return alert('Gagal menambah hadiah: ' + error.message);
+      e.target.reset();
+      alert('Hadiah penukaran poin berhasil ditambahkan!');
+      initApp();
+    }
+
+    async function ubahStokHadiah(id, stokBaru) {
+      await db.from('hadiah_poin').update({ stok: Number(stokBaru) }).eq('id', id);
+      initApp();
+    }
+
+    async function hapusHadiahPoin(id) {
+      if (!confirm('Hapus hadiah ini?')) return;
+      await db.from('hadiah_poin').delete().eq('id', id);
+      initApp();
+    }
+
     function mulaiKameraQR() {
       state.html5QrCode = new Html5Qrcode("reader");
       state.html5QrCode.start(
@@ -2336,10 +2800,14 @@
         jam_operasional: document.getElementById('edit-jam').value,
         info_pendaftaran: document.getElementById('edit-syarat').value,
         deskripsi: document.getElementById('edit-deskripsi').value,
+        tarif_ongkir: Number(document.getElementById('edit-tarif-ongkir').value || 0),
+        sistem_poin_aktif: document.getElementById('edit-poin-aktif').value === 'true',
+        belanja_per_poin: Math.max(1, Number(document.getElementById('edit-belanja-per-poin').value || 5000)),
+        nilai_rupiah_per_poin: Math.max(0, Number(document.getElementById('edit-nilai-rupiah-poin').value || 0)),
         password_owner: document.getElementById('edit-pass-owner').value
       }).eq('id', 1);
-      if (error) return alert('Gagal menyimpan profil: ' + error.message);
-      alert('Profil & nomor WhatsApp kasir berhasil diperbarui!');
+      if (error) return alert('Gagal menyimpan pengaturan: ' + error.message);
+      alert('Profil, tarif ongkir, & pengaturan poin berhasil diperbarui!');
       initApp();
     }
 
